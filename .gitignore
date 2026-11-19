@@ -1,5 +1,18 @@
+# Dependências (recriadas com "npm install")
 node_modules/
+
+# Saída do build do TypeScript
 dist/
+
+# Variáveis de ambiente
 .env
-prisma/*.db
-prisma/*.db-journal
+
+# Banco SQLite e seus arquivos temporários
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs e arquivos de sistema
+*.log
+.DS_Store

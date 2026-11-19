@@ -4,7 +4,54 @@ API de gestão financeira pessoal.
 
 ## Tecnologias
 
-- Node.js
-- TypeScript
+- Node.js 22.5+ e TypeScript
+- Express 5
+- SQLite (`node:sqlite`, nativo do Node)
 - Zod (validação)
-- JWT (autenticação)
+- JWT + bcrypt (autenticação)
+- Swagger (documentação)
+
+## Como rodar
+
+```bash
+npm install
+cp .env.example .env   # depois troque o JWT_SECRET
+npm run dev
+```
+
+- API: `http://localhost:3000`
+- Documentação (Swagger): `http://localhost:3000/docs`
+
+O banco (`personal-finance.db`) é criado automaticamente na primeira execução.
+
+## Autenticação
+
+O sistema tem um único usuário.
+
+1. `POST /usuarios` cadastra o usuário (só funciona enquanto não houver nenhum).
+2. `POST /auth/login` devolve o token.
+3. Nas rotas protegidas, envie o header `Authorization: Bearer <token>`.
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| POST | `/usuarios` | Cadastra o usuário | Não |
+| POST | `/auth/login` | Faz login e devolve o token JWT | Não |
+| GET | `/auth/me` | Dados do usuário logado | Sim |
+
+## Estrutura
+
+```
+src/
+  server.ts       sobe o servidor
+  app.ts          configura o Express e registra as rotas
+  container.ts    cria os repositories e services
+  config/         variáveis de ambiente e Swagger
+  database/       conexão SQLite e schema.sql
+  routes/         rotas (com a documentação do Swagger)
+  controllers/    recebem a requisição e devolvem a resposta
+  services/       regras de negócio
+  repositories/   acesso ao banco
+  schemas/        validação com Zod
+  models/         tipos das entidades
+  middlewares/    autenticação, validação e tratamento de erros
+```
