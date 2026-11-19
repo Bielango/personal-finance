@@ -38,6 +38,20 @@ O sistema tem um único usuário.
 | POST | `/auth/login` | Faz login e devolve o token JWT | Não |
 | GET | `/auth/me` | Dados do usuário logado | Sim |
 
+## Contas
+
+As contas pertencem ao usuário autenticado. O saldo é recebido em reais pela API e armazenado em centavos no SQLite.
+
+Tipos aceitos: `corrente`, `poupanca`, `investimento` e `carteira`.
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| GET | `/contas` | Lista as contas do usuário | Sim |
+| GET | `/contas/:id` | Busca uma conta do usuário | Sim |
+| POST | `/contas` | Cadastra uma conta | Sim |
+| PUT | `/contas/:id` | Atualiza uma conta | Sim |
+| DELETE | `/contas/:id` | Exclui uma conta | Sim |
+
 ## Estrutura
 
 ```

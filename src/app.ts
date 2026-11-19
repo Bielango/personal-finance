@@ -1,8 +1,10 @@
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import { autenticar } from "./middlewares/autenticar";
 import { erroHandler } from "./middlewares/error-handler";
 import { authRoutes } from "./routes/auth-routes";
+import { contasRoutes } from "./routes/contas-routes";
 import { usuariosRoutes } from "./routes/usuarios-routes";
 
 const app = express();
@@ -36,7 +38,8 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/auth", authRoutes);
 app.use("/usuarios", usuariosRoutes);
 
-// Rotas protegidas (com o middleware "autenticar") entram aqui.
+// Rotas protegidas
+app.use("/contas", autenticar, contasRoutes);
 
 app.use((_request, response) => {
     response.status(404).json({ mensagem: "Rota não encontrada" });
