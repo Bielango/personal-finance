@@ -1,10 +1,34 @@
 import { Router } from "express";
 import { login, usuarioAutenticado } from "../controllers/auth-controller";
+import { criarPrimeiroUsuario } from "../controllers/usuarios-controller";
 import { autenticar } from "../middlewares/autenticar";
 import { validar } from "../middlewares/validar";
-import { loginSchema } from "../schemas/usuario-schema";
+import { loginSchema, usuarioInputSchema } from "../schemas/usuario-schema";
 
 const authRoutes = Router();
+
+/**
+ * @openapi
+ * /auth/cadastro:
+ *   post:
+ *     summary: Cadastra o primeiro usuario do sistema
+ *     tags: [Autenticacao]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UsuarioInput'
+ *     responses:
+ *       201:
+ *         description: Primeiro usuario cadastrado
+ *       400:
+ *         description: Dados invalidos
+ *       403:
+ *         description: O primeiro usuario ja foi cadastrado
+ */
+authRoutes.post("/cadastro", validar(usuarioInputSchema, "body"), criarPrimeiroUsuario);
 
 /**
  * @openapi

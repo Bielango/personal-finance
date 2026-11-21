@@ -62,8 +62,37 @@ export function loginRequest(email: string, senha: string) {
 }
 
 export function cadastroRequest(nome: string, email: string, senha: string) {
-    return apiRequest<Usuario>("/usuarios", {
+    return apiRequest<Usuario>("/auth/cadastro", {
         method: "POST",
         body: JSON.stringify({ nome, email, senha })
     });
+}
+
+export function listarUsuariosRequest(token: string) {
+    return apiRequest<Usuario[]>("/usuarios", {}, token);
+}
+
+export function criarUsuarioRequest(
+    dados: { nome: string; email: string; senha: string },
+    token: string
+) {
+    return apiRequest<Usuario>("/usuarios", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function atualizarUsuarioRequest(
+    id: number,
+    dados: { nome: string; email: string; senha?: string },
+    token: string
+) {
+    return apiRequest<Usuario>(`/usuarios/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function excluirUsuarioRequest(id: number, token: string) {
+    return apiRequest<void>(`/usuarios/${id}`, { method: "DELETE" }, token);
 }

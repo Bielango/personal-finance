@@ -36,9 +36,9 @@ app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Rotas públicas
 app.use("/auth", authRoutes);
-app.use("/usuarios", usuariosRoutes);
 
 // Rotas protegidas
+app.use("/usuarios", autenticar, usuariosRoutes);
 app.use("/contas", autenticar, contasRoutes);
 
 app.use((_request, response) => {

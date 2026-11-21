@@ -20,6 +20,7 @@ interface AuthContextValue {
     carregando: boolean;
     entrar(email: string, senha: string): Promise<void>;
     cadastrar(nome: string, email: string, senha: string): Promise<void>;
+    atualizarUsuarioLocal(usuario: Usuario): Promise<void>;
     sair(): Promise<void>;
 }
 
@@ -68,6 +69,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await entrar(email, senha);
     }, [entrar]);
 
+    const atualizarUsuarioLocal = useCallback(async (usuarioAtualizado: Usuario) => {
+        await setStorageItem(USER_KEY, JSON.stringify(usuarioAtualizado));
+        setUsuario(usuarioAtualizado);
+    }, []);
+
     const sair = useCallback(async () => {
         await Promise.all([
             deleteStorageItem(TOKEN_KEY),
@@ -78,8 +84,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }, []);
 
     const value = useMemo(
-        () => ({ token, usuario, carregando, entrar, cadastrar, sair }),
-        [token, usuario, carregando, entrar, cadastrar, sair]
+        () => ({
+            token,
+            usuario,
+            carregando,
+            entrar,
+            cadastrar,
+            atualizarUsuarioLocal,
+            sair
+        }),
+        [token, usuario, carregando, entrar, cadastrar, atualizarUsuarioLocal, sair]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

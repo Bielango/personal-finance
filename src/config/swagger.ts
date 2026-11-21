@@ -22,7 +22,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
 
         tags: [
             { name: "Autenticação", description: "Login e identificação do usuário autenticado" },
-            { name: "Usuário", description: "Cadastro do usuário do sistema" },
+            { name: "Usuarios", description: "Cadastro e manutencao dos usuarios" },
             { name: "Contas", description: "Contas financeiras do usuário autenticado" }
         ],
 
@@ -50,6 +50,20 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         nome: { type: "string", example: "Ana Souza" },
                         email: { type: "string", format: "email", example: "ana@exemplo.com" },
                         senha: { type: "string", format: "password", example: "senha123" }
+                    }
+                },
+                UsuarioAtualizacaoInput: {
+                    type: "object",
+                    required: ["nome", "email"],
+                    properties: {
+                        nome: { type: "string", example: "Ana Souza" },
+                        email: { type: "string", format: "email", example: "ana@exemplo.com" },
+                        senha: {
+                            type: "string",
+                            format: "password",
+                            description: "Opcional. Se omitida, mantem a senha atual.",
+                            example: "novaSenha123"
+                        }
                     }
                 },
                 LoginInput: {

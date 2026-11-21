@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -12,10 +13,40 @@ import {
 } from "react-native";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { LoginScreen } from "./src/screens/LoginScreen";
+import { UsuariosScreen } from "./src/screens/UsuariosScreen";
 import { colors } from "./src/theme";
 
-function HomeScreen() {
+type Tab = "inicio" | "usuarios";
+
+const tabs = [
+    { key: "inicio" as const, label: "Inicio", icon: "home-outline" as const },
+    { key: "usuarios" as const, label: "Usuarios", icon: "people-outline" as const }
+];
+
+function DashboardScreen() {
+    return (
+        <View style={styles.dashboard}>
+            <Text style={styles.sectionLabel}>SALDO TOTAL</Text>
+            <Text style={styles.balance}>R$ 0,00</Text>
+
+            <View style={styles.divider} />
+
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Contas</Text>
+                <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.emptyState}>
+                <Ionicons name="wallet-outline" size={34} color={colors.info} />
+                <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
+                <Text style={styles.emptyText}>Suas contas aparecerao aqui.</Text>
+            </View>
+        </View>
+    );
+}
+
+function ConteudoAutenticado() {
     const { usuario, sair } = useAuth();
+    const [tab, setTab] = useState<Tab>("inicio");
 
     function confirmarSaida() {
         if (Platform.OS === "web") {
@@ -39,7 +70,7 @@ function HomeScreen() {
                     </View>
                     <View style={styles.identityText}>
                         <Text style={styles.brandName}>Financas Pessoais</Text>
-                        <Text numberOfLines={1} style={styles.userName}>{usuario?.nome}</Text>
+                        <Text numberOfLines={1} style={styles.loggedUserName}>{usuario?.nome}</Text>
                     </View>
                 </View>
                 <Pressable
@@ -52,20 +83,35 @@ function HomeScreen() {
             </View>
 
             <View style={styles.content}>
-                <Text style={styles.sectionLabel}>SALDO TOTAL</Text>
-                <Text style={styles.balance}>R$ 0,00</Text>
+                {tab === "inicio" ? <DashboardScreen /> : <UsuariosScreen />}
+            </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Contas</Text>
-                    <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-                </View>
-                <View style={styles.emptyState}>
-                    <Ionicons name="wallet-outline" size={34} color={colors.info} />
-                    <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
-                    <Text style={styles.emptyText}>Suas contas aparecerao aqui.</Text>
-                </View>
+            <View style={styles.tabBar}>
+                {tabs.map(item => {
+                    const ativa = item.key === tab;
+                    return (
+                        <Pressable
+                            key={item.key}
+                            accessibilityRole="tab"
+                            accessibilityState={{ selected: ativa }}
+                            onPress={() => setTab(item.key)}
+                            style={({ pressed }) => [
+                                styles.tab,
+                                ativa && styles.activeTab,
+                                pressed && styles.pressed
+                            ]}
+                        >
+                            <Ionicons
+                                name={item.icon}
+                                size={22}
+                                color={ativa ? colors.primary : colors.muted}
+                            />
+                            <Text style={[styles.tabLabel, ativa && styles.activeTabLabel]}>
+                                {item.label}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
             </View>
         </SafeAreaView>
     );
@@ -82,7 +128,7 @@ function Root() {
         );
     }
 
-    return token ? <HomeScreen /> : <LoginScreen />;
+    return token ? <ConteudoAutenticado /> : <LoginScreen />;
 }
 
 export default function App() {
@@ -137,7 +183,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "800"
     },
-    userName: {
+    loggedUserName: {
         color: "#C6DDDA",
         fontSize: 12,
         marginTop: 2
@@ -150,7 +196,10 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.background
+    },
+    dashboard: {
+        flex: 1,
         paddingHorizontal: 20,
         paddingTop: 28
     },
@@ -201,6 +250,34 @@ const styles = StyleSheet.create({
         color: colors.muted,
         fontSize: 14,
         marginTop: 4
+    },
+    tabBar: {
+        minHeight: 66,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+        backgroundColor: colors.surface,
+        flexDirection: "row"
+    },
+    tab: {
+        flex: 1,
+        minWidth: 0,
+        borderTopWidth: 3,
+        borderTopColor: "transparent",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 3
+    },
+    activeTab: {
+        borderTopColor: colors.accent
+    },
+    tabLabel: {
+        color: colors.muted,
+        fontSize: 11,
+        fontWeight: "600"
+    },
+    activeTabLabel: {
+        color: colors.primary,
+        fontWeight: "800"
     },
     pressed: {
         opacity: 0.65
