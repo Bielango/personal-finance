@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { ApiValidationError, LoginResponse, Usuario } from "../types";
+import { ApiValidationError, Conta, LoginResponse, TipoConta, Usuario } from "../types";
 
 const configurada = process.env.EXPO_PUBLIC_API_URL?.trim();
 const enderecoPadrao = Platform.OS === "web"
@@ -95,4 +95,33 @@ export function atualizarUsuarioRequest(
 
 export function excluirUsuarioRequest(id: number, token: string) {
     return apiRequest<void>(`/usuarios/${id}`, { method: "DELETE" }, token);
+}
+
+export interface ContaInput {
+    nome: string;
+    instituicao?: string;
+    tipo: TipoConta;
+    saldo: number;
+}
+
+export function listarContasRequest(token: string) {
+    return apiRequest<Conta[]>("/contas", {}, token);
+}
+
+export function criarContaRequest(dados: ContaInput, token: string) {
+    return apiRequest<Conta>("/contas", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function atualizarContaRequest(id: number, dados: ContaInput, token: string) {
+    return apiRequest<Conta>(`/contas/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function excluirContaRequest(id: number, token: string) {
+    return apiRequest<void>(`/contas/${id}`, { method: "DELETE" }, token);
 }

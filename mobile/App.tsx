@@ -12,41 +12,21 @@ import {
     View
 } from "react-native";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
+import { ContasScreen } from "./src/screens/ContasScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { UsuariosScreen } from "./src/screens/UsuariosScreen";
 import { colors } from "./src/theme";
 
-type Tab = "inicio" | "usuarios";
+type Tab = "contas" | "usuarios";
 
 const tabs = [
-    { key: "inicio" as const, label: "Inicio", icon: "home-outline" as const },
+    { key: "contas" as const, label: "Contas", icon: "wallet-outline" as const },
     { key: "usuarios" as const, label: "Usuarios", icon: "people-outline" as const }
 ];
 
-function DashboardScreen() {
-    return (
-        <View style={styles.dashboard}>
-            <Text style={styles.sectionLabel}>SALDO TOTAL</Text>
-            <Text style={styles.balance}>R$ 0,00</Text>
-
-            <View style={styles.divider} />
-
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Contas</Text>
-                <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.emptyState}>
-                <Ionicons name="wallet-outline" size={34} color={colors.info} />
-                <Text style={styles.emptyTitle}>Nenhuma conta cadastrada</Text>
-                <Text style={styles.emptyText}>Suas contas aparecerao aqui.</Text>
-            </View>
-        </View>
-    );
-}
-
 function ConteudoAutenticado() {
     const { usuario, sair } = useAuth();
-    const [tab, setTab] = useState<Tab>("inicio");
+    const [tab, setTab] = useState<Tab>("contas");
 
     function confirmarSaida() {
         if (Platform.OS === "web") {
@@ -83,7 +63,7 @@ function ConteudoAutenticado() {
             </View>
 
             <View style={styles.content}>
-                {tab === "inicio" ? <DashboardScreen /> : <UsuariosScreen />}
+                {tab === "contas" ? <ContasScreen /> : <UsuariosScreen />}
             </View>
 
             <View style={styles.tabBar}>
@@ -197,59 +177,6 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         backgroundColor: colors.background
-    },
-    dashboard: {
-        flex: 1,
-        paddingHorizontal: 20,
-        paddingTop: 28
-    },
-    sectionLabel: {
-        color: colors.muted,
-        fontSize: 12,
-        fontWeight: "700"
-    },
-    balance: {
-        color: colors.text,
-        fontSize: 34,
-        fontWeight: "800",
-        marginTop: 5
-    },
-    divider: {
-        height: 1,
-        backgroundColor: colors.border,
-        marginVertical: 26
-    },
-    sectionHeader: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between"
-    },
-    sectionTitle: {
-        color: colors.text,
-        fontSize: 20,
-        fontWeight: "800"
-    },
-    emptyState: {
-        marginTop: 18,
-        minHeight: 170,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 8,
-        backgroundColor: colors.surface,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20
-    },
-    emptyTitle: {
-        color: colors.text,
-        fontSize: 16,
-        fontWeight: "700",
-        marginTop: 10
-    },
-    emptyText: {
-        color: colors.muted,
-        fontSize: 14,
-        marginTop: 4
     },
     tabBar: {
         minHeight: 66,
