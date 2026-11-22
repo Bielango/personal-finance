@@ -26,17 +26,41 @@ O banco (`personal-finance.db`) é criado automaticamente na primeira execução
 
 ## Autenticação
 
-O sistema tem um único usuário.
+O primeiro acesso é criado por uma rota pública. Depois disso, o CRUD de usuários exige autenticação.
 
-1. `POST /usuarios` cadastra o usuário (só funciona enquanto não houver nenhum).
+1. `POST /auth/cadastro` cadastra o primeiro usuário (só funciona enquanto não houver nenhum).
 2. `POST /auth/login` devolve o token.
 3. Nas rotas protegidas, envie o header `Authorization: Bearer <token>`.
 
 | Método | Rota | Descrição | Token |
 |---|---|---|---|
-| POST | `/usuarios` | Cadastra o usuário | Não |
+| POST | `/auth/cadastro` | Cadastra o primeiro usuário | Não |
 | POST | `/auth/login` | Faz login e devolve o token JWT | Não |
 | GET | `/auth/me` | Dados do usuário logado | Sim |
+
+## Usuários
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| GET | `/usuarios` | Lista os usuários | Sim |
+| GET | `/usuarios/:id` | Busca um usuário | Sim |
+| POST | `/usuarios` | Cadastra um usuário | Sim |
+| PUT | `/usuarios/:id` | Atualiza um usuário | Sim |
+| DELETE | `/usuarios/:id` | Exclui um usuário | Sim |
+
+## Contas
+
+Cada conta pertence ao usuário escolhido no cadastro. Todos os usuários autenticados podem visualizar e administrar as contas. O saldo é recebido em reais pela API e armazenado em centavos no SQLite.
+
+Tipos aceitos: `corrente`, `poupanca`, `investimento` e `carteira`.
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| GET | `/contas` | Lista as contas do usuário | Sim |
+| GET | `/contas/:id` | Busca uma conta do usuário | Sim |
+| POST | `/contas` | Cadastra uma conta | Sim |
+| PUT | `/contas/:id` | Atualiza uma conta | Sim |
+| DELETE | `/contas/:id` | Exclui uma conta | Sim |
 
 ## Estrutura
 

@@ -1,0 +1,128 @@
+import { Platform } from "react-native";
+import { ApiValidationError, Conta, LoginResponse, TipoConta, Usuario } from "../types";
+
+const configurada = process.env.EXPO_PUBLIC_API_URL?.trim();
+const enderecoPadrao = Platform.OS === "web"
+    ? "http://localhost:3000"
+    : "http://10.0.2.2:3000";
+
+export const API_URL = (configurada || enderecoPadrao).replace(/\/$/, "");
+
+interface ApiErrorBody {
+    mensagem?: string;
+    erros?: ApiValidationError[];
+}
+
+export class ApiError extends Error {
+    constructor(
+        message: string,
+        public readonly status: number,
+        public readonly erros: ApiValidationError[] = []
+    ) {
+        super(message);
+    }
+}
+
+export async function apiRequest<T>(
+    path: string,
+    options: RequestInit = {},
+    token?: string | null
+): Promise<T> {
+    const response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...options.headers
+        }
+    });
+
+    const text = await response.text();
+    const body = text ? JSON.parse(text) as ApiErrorBody | T : undefined;
+
+    if (!response.ok) {
+        const erro = body as ApiErrorBody | undefined;
+        const detalhes = erro?.erros?.map(item => item.mensagem).join("\n");
+        throw new ApiError(
+            detalhes || erro?.mensagem || "Nao foi possivel concluir a operacao",
+            response.status,
+            erro?.erros
+        );
+    }
+
+    return body as T;
+}
+
+export function loginRequest(email: string, senha: string) {
+    return apiRequest<LoginResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, senha })
+    });
+}
+
+export function cadastroRequest(nome: string, email: string, senha: string) {
+    return apiRequest<Usuario>("/auth/cadastro", {
+        method: "POST",
+        body: JSON.stringify({ nome, email, senha })
+    });
+}
+
+export function listarUsuariosRequest(token: string) {
+    return apiRequest<Usuario[]>("/usuarios", {}, token);
+}
+
+export function criarUsuarioRequest(
+    dados: { nome: string; email: string; senha: string },
+    token: string
+) {
+    return apiRequest<Usuario>("/usuarios", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function atualizarUsuarioRequest(
+    id: number,
+    dados: { nome: string; email: string; senha?: string },
+    token: string
+) {
+    return apiRequest<Usuario>(`/usuarios/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function excluirUsuarioRequest(id: number, token: string) {
+    return apiRequest<void>(`/usuarios/${id}`, { method: "DELETE" }, token);
+}
+
+export interface ContaInput {
+    usuarioId: number;
+    nome: string;
+    instituicao?: string;
+    tipo: TipoConta;
+    saldo: number;
+}
+
+export function listarContasRequest(token: string) {
+    return apiRequest<Conta[]>("/contas", {}, token);
+}
+
+export function criarContaRequest(dados: ContaInput, token: string) {
+    return apiRequest<Conta>("/contas", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function atualizarContaRequest(id: number, dados: ContaInput, token: string) {
+    return apiRequest<Conta>(`/contas/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function excluirContaRequest(id: number, token: string) {
+    return apiRequest<void>(`/contas/${id}`, { method: "DELETE" }, token);
+}

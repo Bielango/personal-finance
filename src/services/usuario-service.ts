@@ -1,21 +1,53 @@
 import { AppError } from "../errors/app-error";
 import { UsuarioRepository } from "../repositories/usuario-repository";
-import { UsuarioInput } from "../schemas/usuario-schema";
+import { UsuarioAtualizacaoInput, UsuarioInput } from "../schemas/usuario-schema";
 
 export class UsuarioService {
     constructor(private readonly repository: UsuarioRepository) {}
 
+    listar() {
+        return this.repository.listar();
+    }
+
     buscarPorId(id: number) {
         const usuario = this.repository.buscarPorId(id);
-        if (!usuario) throw new AppError("Usuário não encontrado", 404);
+        if (!usuario) throw new AppError("Usuario nao encontrado", 404);
         return usuario;
     }
 
-    // O sistema é de um único usuário: o cadastro só funciona enquanto não houver ninguém.
     criar(dados: UsuarioInput) {
-        if (this.repository.contar() > 0) {
-            throw new AppError("Já existe um usuário cadastrado. Faça login.", 403);
+        if (this.repository.emailEmUso(dados.email)) {
+            throw new AppError("Email ja cadastrado", 409);
         }
         return this.repository.criar(dados);
+    }
+
+    criarPrimeiro(dados: UsuarioInput) {
+        if (this.repository.contar() > 0) {
+            throw new AppError("Ja existe um usuario cadastrado. Faca login.", 403);
+        }
+        return this.criar(dados);
+    }
+
+    atualizar(id: number, dados: UsuarioAtualizacaoInput) {
+        if (!this.repository.buscarPorId(id)) {
+            throw new AppError("Usuario nao encontrado", 404);
+        }
+        if (this.repository.emailEmUso(dados.email, id)) {
+            throw new AppError("Email ja cadastrado", 409);
+        }
+
+        const usuario = this.repository.atualizar(id, dados);
+        if (!usuario) throw new AppError("Usuario nao encontrado", 404);
+        return usuario;
+    }
+
+    excluir(id: number, usuarioAutenticadoId: number) {
+        if (id === usuarioAutenticadoId) {
+            throw new AppError("Voce nao pode excluir o proprio usuario", 409);
+        }
+        if (!this.repository.excluir(id)) {
+            throw new AppError("Usuario nao encontrado", 404);
+        }
     }
 }

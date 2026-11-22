@@ -1,10 +1,9 @@
 import bcrypt from "bcryptjs";
 import { db } from "../database/db";
 import { Usuario, UsuarioCredenciais } from "../models/usuario";
-import { UsuarioInput } from "../schemas/usuario-schema";
+import { UsuarioAtualizacaoInput, UsuarioInput } from "../schemas/usuario-schema";
 import { UsuarioRepository } from "./usuario-repository";
 
-// Quanto maior o custo, mais lento (e mais difícil de adivinhar) fica o hash.
 const CUSTO_HASH = 10;
 
 function mapearUsuario(registro: Record<string, unknown>): Usuario {
@@ -15,7 +14,7 @@ function mapearUsuario(registro: Record<string, unknown>): Usuario {
     };
 }
 
-// A coluna USU_SENHA fica de fora de propósito: a senha nunca sai do banco.
+// A senha fica fora do SELECT para nunca sair nas respostas da API.
 const SELECT_USUARIO = `
     SELECT USU_ID    AS id,
            USU_NOME  AS nome,
@@ -23,10 +22,13 @@ const SELECT_USUARIO = `
     FROM USUARIO`;
 
 export class UsuarioRepositorySqlite implements UsuarioRepository {
-
     contar(): number {
         const resultado = db.prepare("SELECT COUNT(*) AS total FROM USUARIO").get();
         return Number(resultado?.total ?? 0);
+    }
+
+    listar(): Usuario[] {
+        return db.prepare(`${SELECT_USUARIO} ORDER BY USU_NOME`).all().map(mapearUsuario);
     }
 
     buscarPorId(id: number): Usuario | null {
@@ -51,6 +53,14 @@ export class UsuarioRepositorySqlite implements UsuarioRepository {
         };
     }
 
+    emailEmUso(email: string, ignorarId = 0): boolean {
+        return db.prepare(`
+            SELECT 1
+            FROM USUARIO
+            WHERE USU_EMAIL = ? AND USU_ID <> ?
+        `).get(email, ignorarId) !== undefined;
+    }
+
     criar(dados: UsuarioInput): Usuario {
         const resultado = db.prepare(`
             INSERT INTO USUARIO (USU_NOME, USU_EMAIL, USU_SENHA)
@@ -58,7 +68,33 @@ export class UsuarioRepositorySqlite implements UsuarioRepository {
         `).run(dados.nome, dados.email, bcrypt.hashSync(dados.senha, CUSTO_HASH));
 
         const usuario = this.buscarPorId(Number(resultado.lastInsertRowid));
-        if (!usuario) throw new Error("Erro ao criar usuário");
+        if (!usuario) throw new Error("Erro ao criar usuario");
         return usuario;
+    }
+
+    atualizar(id: number, dados: UsuarioAtualizacaoInput): Usuario | null {
+        const resultado = dados.senha
+            ? db.prepare(`
+                UPDATE USUARIO
+                SET USU_NOME = ?, USU_EMAIL = ?, USU_SENHA = ?
+                WHERE USU_ID = ?
+            `).run(
+                dados.nome,
+                dados.email,
+                bcrypt.hashSync(dados.senha, CUSTO_HASH),
+                id
+            )
+            : db.prepare(`
+                UPDATE USUARIO
+                SET USU_NOME = ?, USU_EMAIL = ?
+                WHERE USU_ID = ?
+            `).run(dados.nome, dados.email, id);
+
+        if (resultado.changes === 0) return null;
+        return this.buscarPorId(id);
+    }
+
+    excluir(id: number): boolean {
+        return db.prepare("DELETE FROM USUARIO WHERE USU_ID = ?").run(id).changes > 0;
     }
 }

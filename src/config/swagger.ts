@@ -22,7 +22,8 @@ const swaggerOptions: swaggerJsdoc.Options = {
 
         tags: [
             { name: "Autenticação", description: "Login e identificação do usuário autenticado" },
-            { name: "Usuário", description: "Cadastro do usuário do sistema" }
+            { name: "Usuarios", description: "Cadastro e manutencao dos usuarios" },
+            { name: "Contas", description: "Contas financeiras do usuário autenticado" }
         ],
 
         components: {
@@ -51,6 +52,20 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         senha: { type: "string", format: "password", example: "senha123" }
                     }
                 },
+                UsuarioAtualizacaoInput: {
+                    type: "object",
+                    required: ["nome", "email"],
+                    properties: {
+                        nome: { type: "string", example: "Ana Souza" },
+                        email: { type: "string", format: "email", example: "ana@exemplo.com" },
+                        senha: {
+                            type: "string",
+                            format: "password",
+                            description: "Opcional. Se omitida, mantem a senha atual.",
+                            example: "novaSenha123"
+                        }
+                    }
+                },
                 LoginInput: {
                     type: "object",
                     required: ["email", "senha"],
@@ -64,6 +79,37 @@ const swaggerOptions: swaggerJsdoc.Options = {
                     properties: {
                         token: { type: "string", example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." },
                         usuario: { $ref: "#/components/schemas/Usuario" }
+                    }
+                },
+                Conta: {
+                    type: "object",
+                    properties: {
+                        id: { type: "integer", example: 1 },
+                        nome: { type: "string", example: "Conta principal" },
+                        instituicao: { type: "string", nullable: true, example: "Nubank" },
+                        tipo: {
+                            type: "string",
+                            enum: ["corrente", "poupanca", "investimento", "carteira"],
+                            example: "corrente"
+                        },
+                        saldo: { type: "number", format: "double", example: 1500.50 },
+                        usuarioId: { type: "integer", example: 1 },
+                        usuarioNome: { type: "string", example: "Ana Souza" }
+                    }
+                },
+                ContaInput: {
+                    type: "object",
+                    required: ["usuarioId", "nome", "tipo", "saldo"],
+                    properties: {
+                        usuarioId: { type: "integer", example: 1 },
+                        nome: { type: "string", example: "Conta principal" },
+                        instituicao: { type: "string", example: "Nubank" },
+                        tipo: {
+                            type: "string",
+                            enum: ["corrente", "poupanca", "investimento", "carteira"],
+                            example: "corrente"
+                        },
+                        saldo: { type: "number", format: "double", example: 1500.50 }
                     }
                 },
                 MensagemErro: {
