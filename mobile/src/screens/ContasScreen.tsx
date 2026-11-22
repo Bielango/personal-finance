@@ -21,10 +21,11 @@ import {
     atualizarContaRequest,
     criarContaRequest,
     excluirContaRequest,
-    listarContasRequest
+    listarContasRequest,
+    listarUsuariosRequest
 } from "../services/api";
 import { colors } from "../theme";
-import { Conta, TipoConta } from "../types";
+import { Conta, TipoConta, Usuario } from "../types";
 
 const tiposConta = [
     { valor: "corrente" as const, label: "Corrente", icon: "card-outline" as const },
@@ -52,17 +53,20 @@ function converterSaldo(valor: string) {
 }
 
 export function ContasScreen() {
-    const { token, sair } = useAuth();
+    const { token, usuario: usuarioLogado, sair } = useAuth();
     const [contas, setContas] = useState<Conta[]>([]);
+    const [usuarios, setUsuarios] = useState<Usuario[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [atualizando, setAtualizando] = useState(false);
     const [erroLista, setErroLista] = useState("");
     const [modalVisivel, setModalVisivel] = useState(false);
     const [contaEditando, setContaEditando] = useState<Conta | null>(null);
+    const [usuarioId, setUsuarioId] = useState<number | null>(null);
     const [nome, setNome] = useState("");
     const [instituicao, setInstituicao] = useState("");
     const [tipo, setTipo] = useState<TipoConta>("corrente");
     const [saldo, setSaldo] = useState("");
+    const [seletorAberto, setSeletorAberto] = useState<"usuario" | "tipo" | null>(null);
     const [salvando, setSalvando] = useState(false);
     const [erroFormulario, setErroFormulario] = useState("");
 
@@ -70,6 +74,8 @@ export function ContasScreen() {
         () => contas.reduce((total, conta) => total + conta.saldo, 0),
         [contas]
     );
+    const usuarioSelecionado = usuarios.find(usuario => usuario.id === usuarioId);
+    const tipoSelecionado = detalhesDoTipo(tipo);
 
     const carregarContas = useCallback(async (refresh = false) => {
         if (!token) return;
@@ -77,7 +83,12 @@ export function ContasScreen() {
         refresh ? setAtualizando(true) : setCarregando(true);
         setErroLista("");
         try {
-            setContas(await listarContasRequest(token));
+            const [contasCarregadas, usuariosCarregados] = await Promise.all([
+                listarContasRequest(token),
+                listarUsuariosRequest(token)
+            ]);
+            setContas(contasCarregadas);
+            setUsuarios(usuariosCarregados);
         } catch (error) {
             if (error instanceof ApiError && error.status === 401) {
                 await sair();
@@ -100,38 +111,46 @@ export function ContasScreen() {
 
     function abrirNovaConta() {
         setContaEditando(null);
+        setUsuarioId(usuarioLogado?.id ?? usuarios[0]?.id ?? null);
         setNome("");
         setInstituicao("");
         setTipo("corrente");
         setSaldo("");
+        setSeletorAberto(null);
         setErroFormulario("");
         setModalVisivel(true);
     }
 
     function abrirEdicao(conta: Conta) {
         setContaEditando(conta);
+        setUsuarioId(conta.usuarioId);
         setNome(conta.nome);
         setInstituicao(conta.instituicao ?? "");
         setTipo(conta.tipo);
         setSaldo(String(conta.saldo).replace(".", ","));
+        setSeletorAberto(null);
         setErroFormulario("");
         setModalVisivel(true);
     }
 
     function fecharFormulario() {
-        if (!salvando) setModalVisivel(false);
+        if (!salvando) {
+            setSeletorAberto(null);
+            setModalVisivel(false);
+        }
     }
 
     async function salvar() {
         if (!token) return;
 
         const saldoNumerico = converterSaldo(saldo);
-        if (!nome.trim() || saldoNumerico === null) {
-            setErroFormulario("Informe o nome e um saldo valido.");
+        if (!usuarioId || !nome.trim() || saldoNumerico === null) {
+            setErroFormulario("Informe o usuario, o nome e um saldo valido.");
             return;
         }
 
         const dados = {
+            usuarioId,
             nome: nome.trim(),
             ...(instituicao.trim() ? { instituicao: instituicao.trim() } : {}),
             tipo,
@@ -203,6 +222,12 @@ export function ContasScreen() {
                     <Ionicons name={detalhes.icon} size={22} color={colors.info} />
                 </View>
                 <View style={styles.accountInfo}>
+                    <View style={styles.ownerLine}>
+                        <Ionicons name="person-outline" size={13} color={colors.primary} />
+                        <Text numberOfLines={1} style={styles.accountOwner}>
+                            {item.usuarioNome}
+                        </Text>
+                    </View>
                     <Text numberOfLines={1} style={styles.accountName}>{item.nome}</Text>
                     <Text numberOfLines={1} style={styles.accountDetails}>
                         {item.instituicao || "Sem instituicao"} · {detalhes.label}
@@ -252,7 +277,7 @@ export function ContasScreen() {
             </View>
 
             <View style={styles.totalBand}>
-                <Text style={styles.totalLabel}>SALDO TOTAL</Text>
+                <Text style={styles.totalLabel}>SALDO TOTAL DAS CONTAS</Text>
                 <Text style={[styles.totalValue, saldoTotal < 0 && styles.negativeBalance]}>
                     {formatarMoeda(saldoTotal)}
                 </Text>
@@ -326,6 +351,68 @@ export function ContasScreen() {
                             keyboardShouldPersistTaps="handled"
                         >
                             <View style={styles.group}>
+                                <Text style={styles.label}>Usuario</Text>
+                                <Pressable
+                                    accessibilityRole="button"
+                                    accessibilityState={{ expanded: seletorAberto === "usuario" }}
+                                    onPress={() => setSeletorAberto(
+                                        seletorAberto === "usuario" ? null : "usuario"
+                                    )}
+                                    style={({ pressed }) => [styles.selectBox, pressed && styles.pressed]}
+                                >
+                                    <Ionicons name="person-outline" size={20} color={colors.primary} />
+                                    <View style={styles.selectTextArea}>
+                                        <Text numberOfLines={1} style={styles.selectValue}>
+                                            {usuarioSelecionado?.nome ?? "Selecione um usuario"}
+                                        </Text>
+                                        {!!usuarioSelecionado && (
+                                            <Text numberOfLines={1} style={styles.selectDetail}>
+                                                {usuarioSelecionado.email}
+                                            </Text>
+                                        )}
+                                    </View>
+                                    <Ionicons
+                                        name={seletorAberto === "usuario" ? "chevron-up" : "chevron-down"}
+                                        size={20}
+                                        color={colors.muted}
+                                    />
+                                </Pressable>
+                                {seletorAberto === "usuario" && (
+                                    <View style={styles.dropdown}>
+                                        {usuarios.map(usuario => {
+                                            const selecionado = usuarioId === usuario.id;
+                                            return (
+                                                <Pressable
+                                                    key={usuario.id}
+                                                    onPress={() => {
+                                                        setUsuarioId(usuario.id);
+                                                        setSeletorAberto(null);
+                                                    }}
+                                                    style={({ pressed }) => [
+                                                        styles.dropdownOption,
+                                                        selecionado && styles.selectedOption,
+                                                        pressed && styles.pressed
+                                                    ]}
+                                                >
+                                                    <View style={styles.dropdownTextArea}>
+                                                        <Text numberOfLines={1} style={styles.dropdownName}>
+                                                            {usuario.nome}
+                                                        </Text>
+                                                        <Text numberOfLines={1} style={styles.dropdownDetail}>
+                                                            {usuario.email}
+                                                        </Text>
+                                                    </View>
+                                                    {selecionado && (
+                                                        <Ionicons name="checkmark" size={21} color={colors.primary} />
+                                                    )}
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={styles.group}>
                                 <Text style={styles.label}>Nome da conta</Text>
                                 <TextInput
                                     value={nome}
@@ -349,39 +436,55 @@ export function ContasScreen() {
 
                             <View style={styles.group}>
                                 <Text style={styles.label}>Tipo</Text>
-                                <View style={styles.typeOptions}>
-                                    {tiposConta.map(item => {
-                                        const selecionado = tipo === item.valor;
-                                        return (
-                                            <Pressable
-                                                key={item.valor}
-                                                accessibilityRole="radio"
-                                                accessibilityState={{ checked: selecionado }}
-                                                onPress={() => setTipo(item.valor)}
-                                                style={({ pressed }) => [
-                                                    styles.typeOption,
-                                                    selecionado && styles.selectedType,
-                                                    pressed && styles.pressed
-                                                ]}
-                                            >
-                                                <Ionicons
-                                                    name={selecionado ? "radio-button-on" : "radio-button-off"}
-                                                    size={19}
-                                                    color={selecionado ? colors.primary : colors.muted}
-                                                />
-                                                <Text
-                                                    numberOfLines={1}
-                                                    style={[
-                                                        styles.typeText,
-                                                        selecionado && styles.selectedTypeText
+                                <Pressable
+                                    accessibilityRole="button"
+                                    accessibilityState={{ expanded: seletorAberto === "tipo" }}
+                                    onPress={() => setSeletorAberto(
+                                        seletorAberto === "tipo" ? null : "tipo"
+                                    )}
+                                    style={({ pressed }) => [styles.selectBox, pressed && styles.pressed]}
+                                >
+                                    <Ionicons name={tipoSelecionado.icon} size={20} color={colors.primary} />
+                                    <View style={styles.selectTextArea}>
+                                        <Text numberOfLines={1} style={styles.selectValue}>
+                                            {tipoSelecionado.label}
+                                        </Text>
+                                    </View>
+                                    <Ionicons
+                                        name={seletorAberto === "tipo" ? "chevron-up" : "chevron-down"}
+                                        size={20}
+                                        color={colors.muted}
+                                    />
+                                </Pressable>
+                                {seletorAberto === "tipo" && (
+                                    <View style={styles.dropdown}>
+                                        {tiposConta.map(item => {
+                                            const selecionado = tipo === item.valor;
+                                            return (
+                                                <Pressable
+                                                    key={item.valor}
+                                                    onPress={() => {
+                                                        setTipo(item.valor);
+                                                        setSeletorAberto(null);
+                                                    }}
+                                                    style={({ pressed }) => [
+                                                        styles.dropdownOption,
+                                                        selecionado && styles.selectedOption,
+                                                        pressed && styles.pressed
                                                     ]}
                                                 >
-                                                    {item.label}
-                                                </Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
+                                                    <Ionicons name={item.icon} size={19} color={colors.info} />
+                                                    <View style={styles.dropdownTextArea}>
+                                                        <Text style={styles.dropdownName}>{item.label}</Text>
+                                                    </View>
+                                                    {selecionado && (
+                                                        <Ionicons name="checkmark" size={21} color={colors.primary} />
+                                                    )}
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.group}>
@@ -505,7 +608,7 @@ const styles = StyleSheet.create({
         flexGrow: 1
     },
     accountItem: {
-        minHeight: 88,
+        minHeight: 104,
         paddingHorizontal: 12,
         paddingVertical: 11,
         borderWidth: 1,
@@ -531,7 +634,20 @@ const styles = StyleSheet.create({
     accountName: {
         color: colors.text,
         fontSize: 15,
-        fontWeight: "800"
+        fontWeight: "800",
+        marginTop: 3
+    },
+    ownerLine: {
+        minWidth: 0,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4
+    },
+    accountOwner: {
+        flexShrink: 1,
+        color: colors.primary,
+        fontSize: 12,
+        fontWeight: "700"
     },
     accountDetails: {
         color: colors.muted,
@@ -633,6 +749,68 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "700"
     },
+    selectBox: {
+        minHeight: 52,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 6,
+        backgroundColor: colors.surface,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 9
+    },
+    selectTextArea: {
+        flex: 1,
+        minWidth: 0,
+        paddingVertical: 7
+    },
+    selectValue: {
+        flexShrink: 1,
+        color: colors.text,
+        fontSize: 15,
+        fontWeight: "700"
+    },
+    selectDetail: {
+        color: colors.muted,
+        fontSize: 12,
+        marginTop: 2
+    },
+    dropdown: {
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 6,
+        backgroundColor: colors.surface,
+        overflow: "hidden"
+    },
+    dropdownOption: {
+        minHeight: 50,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 9
+    },
+    selectedOption: {
+        backgroundColor: "#EDF6F4"
+    },
+    dropdownTextArea: {
+        flex: 1,
+        minWidth: 0
+    },
+    dropdownName: {
+        flexShrink: 1,
+        color: colors.text,
+        fontSize: 14,
+        fontWeight: "700"
+    },
+    dropdownDetail: {
+        color: colors.muted,
+        fontSize: 12,
+        marginTop: 2
+    },
     input: {
         height: 50,
         borderWidth: 1,
@@ -642,36 +820,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 13,
         color: colors.text,
         fontSize: 16
-    },
-    typeOptions: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8
-    },
-    typeOption: {
-        width: "48%",
-        minHeight: 44,
-        paddingHorizontal: 10,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 6,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 7
-    },
-    selectedType: {
-        borderColor: colors.primary,
-        backgroundColor: "#EDF6F4"
-    },
-    typeText: {
-        flexShrink: 1,
-        color: colors.muted,
-        fontSize: 13,
-        fontWeight: "600"
-    },
-    selectedTypeText: {
-        color: colors.primary,
-        fontWeight: "800"
     },
     moneyField: {
         height: 50,

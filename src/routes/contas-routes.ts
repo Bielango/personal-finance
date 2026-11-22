@@ -15,7 +15,7 @@ const contasRoutes = Router();
  * @openapi
  * /contas:
  *   get:
- *     summary: Lista as contas do usuario autenticado
+ *     summary: Lista todas as contas cadastradas
  *     tags: [Contas]
  *     responses:
  *       200:

@@ -10,34 +10,36 @@ function mapearConta(registro: Record<string, unknown>): Conta {
         instituicao: registro.instituicao === null ? null : String(registro.instituicao),
         tipo: registro.tipo as Conta["tipo"],
         saldo: Number(registro.saldoCentavos) / 100,
-        usuarioId: Number(registro.usuarioId)
+        usuarioId: Number(registro.usuarioId),
+        usuarioNome: String(registro.usuarioNome)
     };
 }
 
 const SELECT_CONTA = `
-    SELECT CON_ID            AS id,
-           CON_NOME          AS nome,
-           CON_INSTITUICAO   AS instituicao,
-           CON_TIPO          AS tipo,
-           CON_SALDO         AS saldoCentavos,
-           CON_USU_ID        AS usuarioId
-    FROM CONTA`;
+    SELECT C.CON_ID          AS id,
+           C.CON_NOME        AS nome,
+           C.CON_INSTITUICAO AS instituicao,
+           C.CON_TIPO        AS tipo,
+           C.CON_SALDO       AS saldoCentavos,
+           C.CON_USU_ID      AS usuarioId,
+           U.USU_NOME        AS usuarioNome
+    FROM CONTA C
+    INNER JOIN USUARIO U ON U.USU_ID = C.CON_USU_ID`;
 
 export class ContaRepositorySqlite implements ContaRepository {
-    listar(usuarioId: number): Conta[] {
+    listar(): Conta[] {
         const contas = db.prepare(`
             ${SELECT_CONTA}
-            WHERE CON_USU_ID = ?
-            ORDER BY CON_NOME
-        `).all(usuarioId);
+            ORDER BY U.USU_NOME, C.CON_NOME
+        `).all();
         return contas.map(mapearConta);
     }
 
-    buscarPorId(id: number, usuarioId: number): Conta | null {
+    buscarPorId(id: number): Conta | null {
         const conta = db.prepare(`
             ${SELECT_CONTA}
-            WHERE CON_ID = ? AND CON_USU_ID = ?
-        `).get(id, usuarioId);
+            WHERE C.CON_ID = ?
+        `).get(id);
         return conta ? mapearConta(conta) : null;
     }
 
@@ -51,7 +53,7 @@ export class ContaRepositorySqlite implements ContaRepository {
         `).get(usuarioId, nome, ignorarId) !== undefined;
     }
 
-    criar(dados: ContaInput, usuarioId: number): Conta {
+    criar(dados: ContaInput): Conta {
         const resultado = db.prepare(`
             INSERT INTO CONTA (
                 CON_NOME, CON_INSTITUICAO, CON_TIPO, CON_SALDO, CON_USU_ID
@@ -61,40 +63,41 @@ export class ContaRepositorySqlite implements ContaRepository {
             dados.instituicao ?? null,
             dados.tipo,
             Math.round(dados.saldo * 100),
-            usuarioId
+            dados.usuarioId
         );
 
-        const conta = this.buscarPorId(Number(resultado.lastInsertRowid), usuarioId);
+        const conta = this.buscarPorId(Number(resultado.lastInsertRowid));
         if (!conta) throw new Error("Erro ao criar conta");
         return conta;
     }
 
-    atualizar(id: number, dados: ContaInput, usuarioId: number): Conta | null {
+    atualizar(id: number, dados: ContaInput): Conta | null {
         const resultado = db.prepare(`
             UPDATE CONTA
             SET CON_NOME = ?,
                 CON_INSTITUICAO = ?,
                 CON_TIPO = ?,
-                CON_SALDO = ?
-            WHERE CON_ID = ? AND CON_USU_ID = ?
+                CON_SALDO = ?,
+                CON_USU_ID = ?
+            WHERE CON_ID = ?
         `).run(
             dados.nome,
             dados.instituicao ?? null,
             dados.tipo,
             Math.round(dados.saldo * 100),
-            id,
-            usuarioId
+            dados.usuarioId,
+            id
         );
 
         if (resultado.changes === 0) return null;
-        return this.buscarPorId(id, usuarioId);
+        return this.buscarPorId(id);
     }
 
-    excluir(id: number, usuarioId: number): boolean {
+    excluir(id: number): boolean {
         const resultado = db.prepare(`
             DELETE FROM CONTA
-            WHERE CON_ID = ? AND CON_USU_ID = ?
-        `).run(id, usuarioId);
+            WHERE CON_ID = ?
+        `).run(id);
         return resultado.changes > 0;
     }
 }

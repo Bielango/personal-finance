@@ -50,7 +50,7 @@ O primeiro acesso é criado por uma rota pública. Depois disso, o CRUD de usuá
 
 ## Contas
 
-As contas pertencem ao usuário autenticado. O saldo é recebido em reais pela API e armazenado em centavos no SQLite.
+Cada conta pertence ao usuário escolhido no cadastro. Todos os usuários autenticados podem visualizar e administrar as contas. O saldo é recebido em reais pela API e armazenado em centavos no SQLite.
 
 Tipos aceitos: `corrente`, `poupanca`, `investimento` e `carteira`.
 

@@ -93,13 +93,15 @@ const swaggerOptions: swaggerJsdoc.Options = {
                             example: "corrente"
                         },
                         saldo: { type: "number", format: "double", example: 1500.50 },
-                        usuarioId: { type: "integer", example: 1 }
+                        usuarioId: { type: "integer", example: 1 },
+                        usuarioNome: { type: "string", example: "Ana Souza" }
                     }
                 },
                 ContaInput: {
                     type: "object",
-                    required: ["nome", "tipo", "saldo"],
+                    required: ["usuarioId", "nome", "tipo", "saldo"],
                     properties: {
+                        usuarioId: { type: "integer", example: 1 },
                         nome: { type: "string", example: "Conta principal" },
                         instituicao: { type: "string", example: "Nubank" },
                         tipo: {

@@ -98,6 +98,7 @@ export function excluirUsuarioRequest(id: number, token: string) {
 }
 
 export interface ContaInput {
+    usuarioId: number;
     nome: string;
     instituicao?: string;
     tipo: TipoConta;

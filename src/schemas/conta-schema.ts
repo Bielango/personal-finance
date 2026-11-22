@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const contaInputSchema = z.object({
+    usuarioId: z
+        .number({ error: "Informe o usuario da conta" })
+        .int("O usuario deve ter um id inteiro")
+        .positive("O usuario deve ter um id positivo"),
     nome: z
         .string({ error: "Informe o nome da conta" })
         .trim()
