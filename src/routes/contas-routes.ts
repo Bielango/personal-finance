@@ -141,6 +141,8 @@ contasRoutes.put(
  *         description: ID invalido
  *       404:
  *         description: Conta nao encontrada
+ *       409:
+ *         description: A conta possui transacoes
  */
 contasRoutes.delete("/:id", validar(contaIdSchema, "params"), excluirConta);
 

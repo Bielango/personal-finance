@@ -23,7 +23,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
         tags: [
             { name: "Autenticação", description: "Login e identificação do usuário autenticado" },
             { name: "Usuarios", description: "Cadastro e manutencao dos usuarios" },
-            { name: "Contas", description: "Contas financeiras do usuário autenticado" }
+            { name: "Contas", description: "Contas financeiras do usuário autenticado" },
+            { name: "Categorias", description: "Categorias das transações" },
+            { name: "Transações", description: "Recebimentos (+) e gastos (-) das contas" }
         ],
 
         components: {
@@ -110,6 +112,52 @@ const swaggerOptions: swaggerJsdoc.Options = {
                             example: "corrente"
                         },
                         saldo: { type: "number", format: "double", example: 1500.50 }
+                    }
+                },
+                Categoria: {
+                    type: "object",
+                    properties: {
+                        id: { type: "integer", example: 1 },
+                        nome: { type: "string", example: "Única" }
+                    }
+                },
+                TransacaoResumo: {
+                    type: "object",
+                    properties: {
+                        id: { type: "integer", example: 1 },
+                        titulo: { type: "string", example: "Mercado" },
+                        operacao: { type: "string", enum: ["+", "-"], description: "+ = recebimento, - = gasto", example: "-" },
+                        valor: { type: "number", format: "double", example: 152.9 },
+                        status: { type: "string", enum: ["a", "p", "c"], description: "a = ativa, p = paga, c = cancelada", example: "a" },
+                        dataInicio: { type: "string", example: "2026-11-23 14:05:00" },
+                        dataFim: { type: "string", nullable: true, description: "Último pagamento ou cancelamento", example: null },
+                        contaId: { type: "integer", example: 1 },
+                        contaNome: { type: "string", example: "Conta principal" },
+                        categoriaId: { type: "integer", example: 1 },
+                        categoriaNome: { type: "string", example: "Única" }
+                    }
+                },
+                Transacao: {
+                    allOf: [
+                        { $ref: "#/components/schemas/TransacaoResumo" },
+                        {
+                            type: "object",
+                            properties: {
+                                descricao: { type: "string", nullable: true, example: "Compra do mês" }
+                            }
+                        }
+                    ]
+                },
+                TransacaoInput: {
+                    type: "object",
+                    required: ["contaId", "categoriaId", "titulo", "operacao", "valor"],
+                    properties: {
+                        contaId: { type: "integer", example: 1 },
+                        categoriaId: { type: "integer", example: 1 },
+                        titulo: { type: "string", example: "Mercado" },
+                        descricao: { type: "string", example: "Compra do mês" },
+                        operacao: { type: "string", enum: ["+", "-"], example: "-" },
+                        valor: { type: "number", format: "double", description: "Sempre positivo; o sinal vem da operação", example: 152.9 }
                     }
                 },
                 MensagemErro: {

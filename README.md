@@ -64,6 +64,49 @@ Tipos aceitos: `corrente`, `poupanca`, `investimento` e `carteira`.
 | PUT | `/contas/:id` | Atualiza uma conta | Sim |
 | DELETE | `/contas/:id` | Exclui uma conta | Sim |
 
+Uma conta que tem transações não pode ser excluída, nem o usuário dono dela.
+
+## Categorias
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| GET | `/categorias` | Lista as categorias | Sim |
+
+O banco já começa com três categorias: `Única`, `Recorrente` e `Parcelada`.
+
+## Transações
+
+Cada transação é um recebimento (`+`) ou um gasto (`-`) de uma conta. O valor é sempre positivo, e a operação define se ele entra ou sai da conta.
+
+| Status | Significado | Pode |
+|---|---|---|
+| `a` | ativa (ao criar) | pagar, editar, cancelar |
+| `p` | paga | pagar de novo, editar, cancelar |
+| `c` | cancelada | excluir |
+
+- **Pagar** lança o valor no saldo da conta. Cada pagamento lança o valor de novo, e o saldo pode ficar negativo.
+- **Editar** não mexe no saldo.
+- **Cancelar** não devolve o que já foi pago.
+
+| Método | Rota | Descrição | Token |
+|---|---|---|---|
+| GET | `/transacoes` | Lista as transações, sem a descrição | Sim |
+| GET | `/transacoes/:id` | Busca uma transação, com a descrição | Sim |
+| POST | `/transacoes` | Cadastra uma transação | Sim |
+| PUT | `/transacoes/:id` | Atualiza uma transação | Sim |
+| PATCH | `/transacoes/:id/pagar` | Paga a transação | Sim |
+| PATCH | `/transacoes/:id/cancelar` | Cancela a transação | Sim |
+| DELETE | `/transacoes/:id` | Exclui uma transação cancelada | Sim |
+
+Filtros da listagem, todos opcionais:
+- `inicio` e `fim`: período, no formato `AAAA-MM-DD`.
+- `contaId`.
+- `status`: `a`, `p` ou `c`.
+- `ordenarPor`: `data` (padrão), `codigo`, `status`, `categoria`, `operacao`, `valor` ou `conta`.
+- `ordem`: `desc` (padrão) ou `asc`.
+
+Exemplo: `/transacoes?inicio=2026-11-01&fim=2026-11-30&ordenarPor=valor`
+
 ## Estrutura
 
 ```

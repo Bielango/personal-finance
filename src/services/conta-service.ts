@@ -1,12 +1,14 @@
 import { AppError } from "../errors/app-error";
 import { ContaRepository } from "../repositories/conta-repository";
+import { TransacaoRepository } from "../repositories/transacao-repository";
 import { UsuarioRepository } from "../repositories/usuario-repository";
 import { ContaInput } from "../schemas/conta-schema";
 
 export class ContaService {
     constructor(
         private readonly repository: ContaRepository,
-        private readonly usuarioRepository: UsuarioRepository
+        private readonly usuarioRepository: UsuarioRepository,
+        private readonly transacaoRepository: TransacaoRepository
     ) {}
 
     listar() {
@@ -37,6 +39,9 @@ export class ContaService {
 
     excluir(id: number) {
         this.buscarPorId(id);
+        if (this.transacaoRepository.existePorConta(id)) {
+            throw new AppError("A conta possui transacoes e nao pode ser excluida", 409);
+        }
         if (!this.repository.excluir(id)) {
             throw new AppError("Conta nao encontrada", 404);
         }
