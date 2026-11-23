@@ -2,6 +2,8 @@
 
 API de gestão financeira pessoal.
 
+Para trabalhar no código (organização, convenções e como criar um módulo novo), veja o [Guia do projeto](GUIA.md).
+
 ## Tecnologias
 
 - Node.js 22.5+ e TypeScript
