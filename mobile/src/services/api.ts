@@ -1,5 +1,17 @@
 import { Platform } from "react-native";
-import { ApiValidationError, Conta, LoginResponse, TipoConta, Usuario } from "../types";
+import {
+    ApiValidationError,
+    Categoria,
+    Conta,
+    LoginResponse,
+    OperacaoTransacao,
+    OrdenacaoTransacao,
+    StatusTransacao,
+    TipoConta,
+    Transacao,
+    TransacaoResumo,
+    Usuario
+} from "../types";
 
 const configurada = process.env.EXPO_PUBLIC_API_URL?.trim();
 const enderecoPadrao = Platform.OS === "web"
@@ -125,4 +137,64 @@ export function atualizarContaRequest(id: number, dados: ContaInput, token: stri
 
 export function excluirContaRequest(id: number, token: string) {
     return apiRequest<void>(`/contas/${id}`, { method: "DELETE" }, token);
+}
+
+export function listarCategoriasRequest(token: string) {
+    return apiRequest<Categoria[]>("/categorias", {}, token);
+}
+
+export interface TransacaoInput {
+    contaId: number;
+    categoriaId: number;
+    titulo: string;
+    descricao?: string;
+    operacao: OperacaoTransacao;
+    valor: number;
+}
+
+export interface TransacaoFiltro {
+    inicio?: string;
+    fim?: string;
+    contaId?: number;
+    status?: StatusTransacao;
+    ordenarPor?: OrdenacaoTransacao;
+    ordem?: "asc" | "desc";
+}
+
+export function listarTransacoesRequest(filtro: TransacaoFiltro, token: string) {
+    const parametros = Object.entries(filtro)
+        .filter(([, valor]) => valor !== undefined && valor !== "")
+        .map(([chave, valor]) => `${chave}=${encodeURIComponent(String(valor))}`)
+        .join("&");
+    return apiRequest<TransacaoResumo[]>(`/transacoes${parametros ? `?${parametros}` : ""}`, {}, token);
+}
+
+export function buscarTransacaoRequest(id: number, token: string) {
+    return apiRequest<Transacao>(`/transacoes/${id}`, {}, token);
+}
+
+export function criarTransacaoRequest(dados: TransacaoInput, token: string) {
+    return apiRequest<Transacao>("/transacoes", {
+        method: "POST",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function atualizarTransacaoRequest(id: number, dados: TransacaoInput, token: string) {
+    return apiRequest<Transacao>(`/transacoes/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function pagarTransacaoRequest(id: number, token: string) {
+    return apiRequest<Transacao>(`/transacoes/${id}/pagar`, { method: "PATCH" }, token);
+}
+
+export function cancelarTransacaoRequest(id: number, token: string) {
+    return apiRequest<Transacao>(`/transacoes/${id}/cancelar`, { method: "PATCH" }, token);
+}
+
+export function excluirTransacaoRequest(id: number, token: string) {
+    return apiRequest<void>(`/transacoes/${id}`, { method: "DELETE" }, token);
 }

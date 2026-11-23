@@ -1,9 +1,13 @@
 import { AppError } from "../errors/app-error";
+import { TransacaoRepository } from "../repositories/transacao-repository";
 import { UsuarioRepository } from "../repositories/usuario-repository";
 import { UsuarioAtualizacaoInput, UsuarioInput } from "../schemas/usuario-schema";
 
 export class UsuarioService {
-    constructor(private readonly repository: UsuarioRepository) {}
+    constructor(
+        private readonly repository: UsuarioRepository,
+        private readonly transacaoRepository: TransacaoRepository
+    ) {}
 
     listar() {
         return this.repository.listar();
@@ -45,6 +49,10 @@ export class UsuarioService {
     excluir(id: number, usuarioAutenticadoId: number) {
         if (id === usuarioAutenticadoId) {
             throw new AppError("Voce nao pode excluir o proprio usuario", 409);
+        }
+        // As contas do usuario sao apagadas junto, entao nenhuma pode ter transacoes.
+        if (this.transacaoRepository.existePorUsuario(id)) {
+            throw new AppError("O usuario possui contas com transacoes e nao pode ser excluido", 409);
         }
         if (!this.repository.excluir(id)) {
             throw new AppError("Usuario nao encontrado", 404);

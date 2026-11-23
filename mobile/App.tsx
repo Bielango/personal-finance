@@ -14,13 +14,15 @@ import {
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { ContasScreen } from "./src/screens/ContasScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
+import { TransacoesScreen } from "./src/screens/TransacoesScreen";
 import { UsuariosScreen } from "./src/screens/UsuariosScreen";
 import { colors } from "./src/theme";
 
-type Tab = "contas" | "usuarios";
+type Tab = "contas" | "transacoes" | "usuarios";
 
 const tabs = [
     { key: "contas" as const, label: "Contas", icon: "wallet-outline" as const },
+    { key: "transacoes" as const, label: "Transações", icon: "swap-vertical-outline" as const },
     { key: "usuarios" as const, label: "Usuarios", icon: "people-outline" as const }
 ];
 
@@ -63,7 +65,9 @@ function ConteudoAutenticado() {
             </View>
 
             <View style={styles.content}>
-                {tab === "contas" ? <ContasScreen /> : <UsuariosScreen />}
+                {tab === "contas" && <ContasScreen />}
+                {tab === "transacoes" && <TransacoesScreen />}
+                {tab === "usuarios" && <UsuariosScreen />}
             </View>
 
             <View style={styles.tabBar}>

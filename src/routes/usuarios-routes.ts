@@ -124,7 +124,7 @@ usuariosRoutes.put(
  *       404:
  *         description: Usuario nao encontrado
  *       409:
- *         description: Nao e permitido excluir o proprio usuario
+ *         description: Nao e permitido excluir o proprio usuario, nem um usuario com contas que tenham transacoes
  */
 usuariosRoutes.delete("/:id", validar(usuarioIdSchema, "params"), excluirUsuario);
 
