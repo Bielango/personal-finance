@@ -1,4 +1,5 @@
 import { AppError } from "../errors/app-error";
+import { AgendamentoRepository } from "../repositories/agendamento-repository";
 import { ContaRepository } from "../repositories/conta-repository";
 import { TransacaoRepository } from "../repositories/transacao-repository";
 import { UsuarioRepository } from "../repositories/usuario-repository";
@@ -8,7 +9,8 @@ export class ContaService {
     constructor(
         private readonly repository: ContaRepository,
         private readonly usuarioRepository: UsuarioRepository,
-        private readonly transacaoRepository: TransacaoRepository
+        private readonly transacaoRepository: TransacaoRepository,
+        private readonly agendamentoRepository: AgendamentoRepository
     ) {}
 
     listar() {
@@ -38,13 +40,15 @@ export class ContaService {
     }
 
     excluir(id: number) {
-        this.buscarPorId(id);
-        if (this.transacaoRepository.existePorConta(id)) {
-            throw new AppError("A conta possui transacoes e nao pode ser excluida", 409);
-        }
-        if (!this.repository.excluir(id)) {
-            throw new AppError("Conta nao encontrada", 404);
-        }
+        this.agendamentoRepository.atomico(() => {
+            this.buscarPorId(id);
+            if (this.agendamentoRepository.existePorConta(id) || this.transacaoRepository.existePorConta(id)) {
+                throw new AppError("A conta possui agendamentos ou transações e não pode ser excluída", 409);
+            }
+            if (!this.repository.excluir(id)) {
+                throw new AppError("Conta não encontrada", 404);
+            }
+        });
     }
 
     private validarNomeUnico(nome: string, usuarioId: number, ignorarId?: number) {

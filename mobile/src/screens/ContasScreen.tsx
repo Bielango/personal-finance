@@ -15,7 +15,9 @@ import {
     TextInput,
     View
 } from "react-native";
+import { Botao, Cabecalho } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import { formatarMoeda } from "../formatacao";
 import {
     ApiError,
     atualizarContaRequest,
@@ -24,22 +26,15 @@ import {
     listarContasRequest,
     listarUsuariosRequest
 } from "../services/api";
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 import { Conta, TipoConta, Usuario } from "../types";
 
 const tiposConta = [
     { valor: "corrente" as const, label: "Corrente", icon: "card-outline" as const },
-    { valor: "poupanca" as const, label: "Poupanca", icon: "save-outline" as const },
+    { valor: "poupanca" as const, label: "Poupança", icon: "save-outline" as const },
     { valor: "investimento" as const, label: "Investimento", icon: "trending-up-outline" as const },
     { valor: "carteira" as const, label: "Carteira", icon: "wallet-outline" as const }
 ];
-
-function formatarMoeda(valor: number) {
-    return valor.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
-}
 
 function detalhesDoTipo(tipo: TipoConta) {
     return tiposConta.find(item => item.valor === tipo) ?? tiposConta[0]!;
@@ -262,22 +257,12 @@ export function ContasScreen() {
     return (
         <View style={styles.screen}>
             <View style={styles.titleRow}>
-                <View>
-                    <Text style={styles.title}>Contas</Text>
-                    <Text style={styles.count}>{contas.length} cadastrada(s)</Text>
-                </View>
-                <Pressable
-                    accessibilityLabel="Adicionar conta"
-                    onPress={abrirNovaConta}
-                    style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-                >
-                    <Ionicons name="add" size={22} color="#FFFFFF" />
-                    <Text style={styles.addText}>Adicionar</Text>
-                </Pressable>
+                <Cabecalho titulo="Contas" subtitulo="Acompanhe o saldo de cada conta."
+                    acao={<Botao label="Nova conta" icon="add" onPress={abrirNovaConta} />} />
             </View>
 
             <View style={styles.totalBand}>
-                <Text style={styles.totalLabel}>SALDO TOTAL DAS CONTAS</Text>
+                <Text style={styles.totalLabel}>Saldo total das contas</Text>
                 <Text style={[styles.totalValue, saldoTotal < 0 && styles.negativeBalance]}>
                     {formatarMoeda(saldoTotal)}
                 </Text>
@@ -418,7 +403,7 @@ export function ContasScreen() {
                                     value={nome}
                                     onChangeText={setNome}
                                     placeholder="Ex.: Conta principal"
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     style={styles.input}
                                 />
                             </View>
@@ -429,7 +414,7 @@ export function ContasScreen() {
                                     value={instituicao}
                                     onChangeText={setInstituicao}
                                     placeholder="Ex.: Nubank"
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     style={styles.input}
                                 />
                             </View>
@@ -495,7 +480,7 @@ export function ContasScreen() {
                                         value={saldo}
                                         onChangeText={setSaldo}
                                         placeholder="0,00"
-                                        placeholderTextColor="#87928F"
+                                        placeholderTextColor={colors.muted}
                                         keyboardType="decimal-pad"
                                         style={styles.moneyInput}
                                         onSubmitEditing={() => void salvar()}
@@ -520,10 +505,10 @@ export function ContasScreen() {
                                 ]}
                             >
                                 {salvando ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                    <ActivityIndicator color={colors.onDark} />
                                 ) : (
                                     <>
-                                        <Ionicons name="save-outline" size={21} color="#FFFFFF" />
+                                        <Ionicons name="save-outline" size={21} color={colors.onDark} />
                                         <Text style={styles.saveText}>Salvar</Text>
                                     </>
                                 )}
@@ -541,80 +526,41 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background
     },
-    titleRow: {
-        minHeight: 82,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        backgroundColor: colors.surface,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12
-    },
-    title: {
-        color: colors.text,
-        fontSize: 22,
-        fontWeight: "800"
-    },
-    count: {
-        color: colors.muted,
-        fontSize: 13,
-        marginTop: 3
-    },
-    addButton: {
-        minHeight: 42,
-        paddingHorizontal: 14,
-        borderRadius: 6,
-        backgroundColor: colors.primary,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6
-    },
-    addText: {
-        color: "#FFFFFF",
-        fontSize: 14,
-        fontWeight: "800"
-    },
+    titleRow: { padding: 22 },
     totalBand: {
         minHeight: 92,
+        marginHorizontal: 22,
         paddingHorizontal: 18,
         justifyContent: "center",
-        backgroundColor: colors.infoSoft,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border
+        backgroundColor: colors.selection,
+        borderRadius: 6
     },
     totalLabel: {
-        color: colors.info,
-        fontSize: 11,
+        color: colors.primary,
+        fontSize: 13,
         fontWeight: "800"
     },
     totalValue: {
         color: colors.text,
+        fontFamily: fonts.numbers,
         fontSize: 28,
-        fontWeight: "800",
         marginTop: 4
     },
     negativeBalance: {
         color: colors.danger
     },
     list: {
-        padding: 14,
-        gap: 10
+        padding: 22
     },
     emptyList: {
         flexGrow: 1
     },
     accountItem: {
-        minHeight: 104,
-        paddingHorizontal: 12,
+        minHeight: 96,
+        paddingHorizontal: 6,
         paddingVertical: 11,
-        borderWidth: 1,
+        borderBottomWidth: 1,
         borderColor: colors.border,
-        borderRadius: 8,
-        backgroundColor: colors.surface,
         flexDirection: "row",
         alignItems: "center",
         gap: 10
@@ -622,7 +568,7 @@ const styles = StyleSheet.create({
     accountIcon: {
         width: 44,
         height: 44,
-        borderRadius: 8,
+        borderRadius: 5,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: colors.infoSoft
@@ -656,8 +602,8 @@ const styles = StyleSheet.create({
     },
     accountBalance: {
         color: colors.text,
+        fontFamily: fonts.numbers,
         fontSize: 15,
-        fontWeight: "700",
         marginTop: 5
     },
     actions: {
@@ -665,8 +611,8 @@ const styles = StyleSheet.create({
         justifyContent: "center"
     },
     iconButton: {
-        width: 38,
-        height: 34,
+        width: 44,
+        height: 44,
         alignItems: "center",
         justifyContent: "center"
     },
@@ -704,7 +650,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         justifyContent: "flex-end",
-        backgroundColor: "rgba(20, 34, 31, 0.48)"
+        backgroundColor: colors.overlay
     },
     modalDismissArea: {
         flex: 1
@@ -794,7 +740,7 @@ const styles = StyleSheet.create({
         gap: 9
     },
     selectedOption: {
-        backgroundColor: "#EDF6F4"
+        backgroundColor: colors.selection
     },
     dropdownTextArea: {
         flex: 1,
@@ -865,7 +811,7 @@ const styles = StyleSheet.create({
         gap: 8
     },
     saveText: {
-        color: "#FFFFFF",
+        color: colors.onDark,
         fontSize: 16,
         fontWeight: "800"
     },

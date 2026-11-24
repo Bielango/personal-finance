@@ -1,10 +1,10 @@
 import type { SQLInputValue } from "node:sqlite";
-import { db } from "../database/db";
+import { atomico, db } from "../database/db";
 import { Transacao, TransacaoResumo } from "../models/transacao";
 import { TransacaoFiltro, TransacaoInput } from "../schemas/transacao-schema";
 import { TransacaoRepository } from "./transacao-repository";
 
-function mapearResumo(registro: Record<string, unknown>): TransacaoResumo {
+export function mapearResumo(registro: Record<string, unknown>): TransacaoResumo {
     return {
         id: Number(registro.id),
         titulo: String(registro.titulo),
@@ -16,7 +16,9 @@ function mapearResumo(registro: Record<string, unknown>): TransacaoResumo {
         contaId: Number(registro.contaId),
         contaNome: String(registro.contaNome),
         categoriaId: Number(registro.categoriaId),
-        categoriaNome: String(registro.categoriaNome)
+        categoriaNome: String(registro.categoriaNome),
+        agendamentoId: registro.agendamentoId === null ? null : Number(registro.agendamentoId),
+        numeroOcorrencia: registro.numeroOcorrencia === null ? null : Number(registro.numeroOcorrencia)
     };
 }
 
@@ -28,7 +30,7 @@ function mapearTransacao(registro: Record<string, unknown>): Transacao {
 }
 
 // Campos da listagem. A descrição só entra no buscarPorId.
-const CAMPOS_RESUMO = `
+export const CAMPOS_RESUMO = `
     T.TRA_ID          AS id,
     T.TRA_TITULO      AS titulo,
     T.TRA_OPERACAO    AS operacao,
@@ -39,12 +41,15 @@ const CAMPOS_RESUMO = `
     T.TRA_CON_ID      AS contaId,
     C.CON_NOME        AS contaNome,
     T.TRA_CAT_ID      AS categoriaId,
-    K.CAT_NOME        AS categoriaNome`;
+    K.CAT_NOME        AS categoriaNome,
+    O.OCO_AGE_ID      AS agendamentoId,
+    O.OCO_NUMERO      AS numeroOcorrencia`;
 
-const ORIGEM = `
+export const ORIGEM = `
     FROM TRANSACAO T
     INNER JOIN CONTA C     ON C.CON_ID = T.TRA_CON_ID
-    INNER JOIN CATEGORIA K ON K.CAT_ID = T.TRA_CAT_ID`;
+    INNER JOIN CATEGORIA K ON K.CAT_ID = T.TRA_CAT_ID
+    LEFT JOIN OCORRENCIA O ON O.OCO_TRA_ID = T.TRA_ID`;
 
 // Só colunas desta lista entram no ORDER BY (nada vindo direto da requisição).
 const COLUNAS_ORDENACAO: Record<TransacaoFiltro["ordenarPor"], string> = {
@@ -101,18 +106,19 @@ export class TransacaoRepositorySqlite implements TransacaoRepository {
         return transacao ? mapearTransacao(transacao) : null;
     }
 
-    criar(dados: TransacaoInput): Transacao {
+    criar(dados: TransacaoInput, vencimento?: string): Transacao {
         const resultado = db.prepare(`
             INSERT INTO TRANSACAO (
-                TRA_CON_ID, TRA_CAT_ID, TRA_TITULO, TRA_DESCRICAO, TRA_OPERACAO, TRA_VALOR
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                TRA_CON_ID, TRA_CAT_ID, TRA_TITULO, TRA_DESCRICAO, TRA_OPERACAO, TRA_VALOR, TRA_DATA_INICIO
+            ) VALUES (?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now', 'localtime')))
         `).run(
             dados.contaId,
             dados.categoriaId,
             dados.titulo,
             dados.descricao || null,
             dados.operacao,
-            Math.round(dados.valor * 100)
+            Math.round(dados.valor * 100),
+            vencimento ?? null
         );
 
         const transacao = this.buscarPorId(Number(resultado.lastInsertRowid));
@@ -146,32 +152,21 @@ export class TransacaoRepositorySqlite implements TransacaoRepository {
 
     // Lança o valor no saldo da conta e marca como paga, tudo ou nada.
     pagar(id: number): Transacao | null {
-        db.exec("BEGIN");
-        try {
-            db.prepare(`
-                UPDATE CONTA
-                SET CON_SALDO = CON_SALDO + (
-                    SELECT CASE TRA_OPERACAO WHEN '+' THEN TRA_VALOR ELSE -TRA_VALOR END
-                    FROM TRANSACAO
-                    WHERE TRA_ID = ?
-                )
-                WHERE CON_ID = (SELECT TRA_CON_ID FROM TRANSACAO WHERE TRA_ID = ?)
-            `).run(id, id);
-
-            const resultado = db.prepare(`
+        return atomico(() => {
+            const pagamento = db.prepare(`
                 UPDATE TRANSACAO
                 SET TRA_STATUS = 'p',
                     TRA_DATA_FIM = datetime('now', 'localtime')
-                WHERE TRA_ID = ?
-            `).run(id);
-
-            db.exec("COMMIT");
-            if (resultado.changes === 0) return null;
-        } catch (erro) {
-            db.exec("ROLLBACK");
-            throw erro;
-        }
-        return this.buscarPorId(id);
+                WHERE TRA_ID = ? AND TRA_STATUS <> 'c'
+                  AND (TRA_STATUS = 'a' OR NOT EXISTS (SELECT 1 FROM OCORRENCIA WHERE OCO_TRA_ID = ?))
+                RETURNING TRA_CON_ID AS contaId,
+                          CASE TRA_OPERACAO WHEN '+' THEN TRA_VALOR ELSE -TRA_VALOR END AS valor
+            `).get(id, id);
+            if (!pagamento) return null;
+            db.prepare("UPDATE CONTA SET CON_SALDO = CON_SALDO + ? WHERE CON_ID = ?")
+                .run(Number(pagamento.valor), Number(pagamento.contaId));
+            return this.buscarPorId(id);
+        });
     }
 
     cancelar(id: number): Transacao | null {

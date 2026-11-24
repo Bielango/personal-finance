@@ -17,6 +17,8 @@ export interface TransacaoResumo {
     contaNome: string;
     categoriaId: number;
     categoriaNome: string;
+    agendamentoId: number | null;
+    numeroOcorrencia: number | null;
 }
 
 export interface Transacao extends TransacaoResumo {

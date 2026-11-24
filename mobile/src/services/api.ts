@@ -1,11 +1,14 @@
 import { Platform } from "react-native";
 import {
+    Agendamento,
+    AgendamentoDetalhe,
     ApiValidationError,
     Categoria,
     Conta,
     LoginResponse,
     OperacaoTransacao,
     OrdenacaoTransacao,
+    Periodicidade,
     StatusTransacao,
     TipoConta,
     Transacao,
@@ -143,6 +146,17 @@ export function listarCategoriasRequest(token: string) {
     return apiRequest<Categoria[]>("/categorias", {}, token);
 }
 
+export function salvarCategoriaRequest(id: number | undefined, nome: string, token: string) {
+    return apiRequest<Categoria>(id === undefined ? "/categorias" : `/categorias/${id}`, {
+        method: id === undefined ? "POST" : "PUT",
+        body: JSON.stringify({ nome })
+    }, token);
+}
+
+export function excluirCategoriaRequest(id: number, token: string) {
+    return apiRequest<void>(`/categorias/${id}`, { method: "DELETE" }, token);
+}
+
 export interface TransacaoInput {
     contaId: number;
     categoriaId: number;
@@ -197,4 +211,32 @@ export function cancelarTransacaoRequest(id: number, token: string) {
 
 export function excluirTransacaoRequest(id: number, token: string) {
     return apiRequest<void>(`/transacoes/${id}`, { method: "DELETE" }, token);
+}
+
+export type AgendamentoInput = TransacaoInput & { primeiroVencimento: string } & (
+    { tipo: "parcelado"; parcelas: number } |
+    { tipo: "recorrente"; periodicidade: Periodicidade; ate?: string }
+);
+
+export function listarAgendamentosRequest(token: string) {
+    return apiRequest<Agendamento[]>("/agendamentos", {}, token);
+}
+
+export function buscarAgendamentoRequest(id: number, token: string) {
+    return apiRequest<AgendamentoDetalhe>(`/agendamentos/${id}`, {}, token);
+}
+
+export function salvarAgendamentoRequest(id: number | undefined, dados: AgendamentoInput, token: string) {
+    return apiRequest<AgendamentoDetalhe>(id === undefined ? "/agendamentos" : `/agendamentos/${id}`, {
+        method: id === undefined ? "POST" : "PUT",
+        body: JSON.stringify(dados)
+    }, token);
+}
+
+export function cancelarAgendamentoRequest(id: number, token: string) {
+    return apiRequest<AgendamentoDetalhe>(`/agendamentos/${id}/cancelar`, { method: "PATCH" }, token);
+}
+
+export function excluirAgendamentoRequest(id: number, token: string) {
+    return apiRequest<void>(`/agendamentos/${id}`, { method: "DELETE" }, token);
 }
