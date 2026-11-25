@@ -1305,6 +1305,8 @@ const styles = StyleSheet.create({
         fontSize: 12
     },
     itemValue: {
+        // O valor nunca encolhe: quem corta com "..." é a data.
+        flexShrink: 0,
         fontFamily: fonts.numbers,
         fontSize: 14
     },
