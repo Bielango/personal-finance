@@ -25,10 +25,17 @@ const swaggerOptions: swaggerJsdoc.Options = {
             { name: "Usuarios", description: "Cadastro e manutencao dos usuarios" },
             { name: "Contas", description: "Contas financeiras do usuário autenticado" },
             { name: "Categorias", description: "Categorias das transações" },
-            { name: "Transações", description: "Recebimentos (+) e gastos (-) das contas" }
+            { name: "Transações", description: "Recebimentos (+) e gastos (-) das contas" },
+            { name: "Agendamentos", description: "Parcelamentos e lançamentos recorrentes" }
         ],
 
         components: {
+            requestBodies: {
+                CategoriaInput: {
+                    required: true,
+                    content: { "application/json": { schema: { $ref: "#/components/schemas/CategoriaInput" } } }
+                }
+            },
             securitySchemes: {
                 bearerAuth: {
                     type: "http",
@@ -118,8 +125,13 @@ const swaggerOptions: swaggerJsdoc.Options = {
                     type: "object",
                     properties: {
                         id: { type: "integer", example: 1 },
-                        nome: { type: "string", example: "Única" }
+                        nome: { type: "string", example: "Alimentação" }
                     }
+                },
+                CategoriaInput: {
+                    type: "object",
+                    required: ["nome"],
+                    properties: { nome: { type: "string", minLength: 2, maxLength: 100, example: "Moradia" } }
                 },
                 TransacaoResumo: {
                     type: "object",
@@ -134,7 +146,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         contaId: { type: "integer", example: 1 },
                         contaNome: { type: "string", example: "Conta principal" },
                         categoriaId: { type: "integer", example: 1 },
-                        categoriaNome: { type: "string", example: "Única" }
+                        categoriaNome: { type: "string", example: "Alimentação" },
+                        agendamentoId: { type: "integer", nullable: true },
+                        numeroOcorrencia: { type: "integer", nullable: true }
                     }
                 },
                 Transacao: {
@@ -159,6 +173,72 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         operacao: { type: "string", enum: ["+", "-"], example: "-" },
                         valor: { type: "number", format: "double", description: "Sempre positivo; o sinal vem da operação", example: 152.9 }
                     }
+                },
+                AgendamentoInput: {
+                    allOf: [
+                        { $ref: "#/components/schemas/TransacaoInput" },
+                        {
+                            type: "object",
+                            required: ["primeiroVencimento"],
+                            properties: { primeiroVencimento: { type: "string", format: "date", example: "2026-12-31" } },
+                            oneOf: [
+                                {
+                                    required: ["tipo", "parcelas"],
+                                    properties: {
+                                        tipo: { type: "string", enum: ["parcelado"] },
+                                        parcelas: { type: "integer", minimum: 2, maximum: 120 }
+                                    }
+                                },
+                                {
+                                    required: ["tipo", "periodicidade"],
+                                    properties: {
+                                        tipo: { type: "string", enum: ["recorrente"] },
+                                        periodicidade: { type: "string", enum: ["semanal", "mensal", "anual"] },
+                                        ate: { type: "string", format: "date" }
+                                    }
+                                }
+                            ]
+                        }
+                    ],
+                    description: "Em parcelamentos, valor é o total. Em recorrências, é o valor de cada lançamento.",
+                    example: {
+                        contaId: 1, categoriaId: 2, titulo: "Mesa", operacao: "-", valor: 300,
+                        primeiroVencimento: "2026-12-31", tipo: "parcelado", parcelas: 3
+                    }
+                },
+                Agendamento: {
+                    type: "object",
+                    properties: {
+                        id: { type: "integer" },
+                        contaId: { type: "integer" },
+                        contaNome: { type: "string" },
+                        categoriaId: { type: "integer" },
+                        categoriaNome: { type: "string" },
+                        titulo: { type: "string" },
+                        descricao: { type: "string", nullable: true },
+                        operacao: { type: "string", enum: ["+", "-"] },
+                        valor: { type: "number" },
+                        tipo: { type: "string", enum: ["parcelado", "recorrente"] },
+                        primeiroVencimento: { type: "string", format: "date" },
+                        parcelas: { type: "integer", nullable: true },
+                        periodicidade: { type: "string", enum: ["semanal", "mensal", "anual"], nullable: true },
+                        ate: { type: "string", format: "date", nullable: true },
+                        status: { type: "string", enum: ["ativo", "concluido", "cancelado"] },
+                        proximoVencimento: { type: "string", format: "date", nullable: true },
+                        pendentes: { type: "integer" },
+                        pagas: { type: "integer" }
+                    }
+                },
+                AgendamentoDetalhe: {
+                    allOf: [
+                        { $ref: "#/components/schemas/Agendamento" },
+                        {
+                            type: "object",
+                            properties: {
+                                ocorrencias: { type: "array", items: { $ref: "#/components/schemas/TransacaoResumo" } }
+                            }
+                        }
+                    ]
                 },
                 MensagemErro: {
                     type: "object",

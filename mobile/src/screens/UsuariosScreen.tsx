@@ -15,6 +15,7 @@ import {
     TextInput,
     View
 } from "react-native";
+import { Botao, Cabecalho } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import {
     ApiError,
@@ -211,18 +212,8 @@ export function UsuariosScreen() {
     return (
         <View style={styles.screen}>
             <View style={styles.titleRow}>
-                <View>
-                    <Text style={styles.title}>Usuarios</Text>
-                    <Text style={styles.count}>{usuarios.length} cadastrado(s)</Text>
-                </View>
-                <Pressable
-                    accessibilityLabel="Adicionar usuario"
-                    onPress={abrirNovo}
-                    style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-                >
-                    <Ionicons name="person-add-outline" size={21} color="#FFFFFF" />
-                    <Text style={styles.addText}>Adicionar</Text>
-                </Pressable>
+                <Cabecalho titulo="Usuários" subtitulo="Gerencie quem pode acessar o sistema."
+                    acao={<Botao label="Novo usuário" icon="person-add-outline" onPress={abrirNovo} />} />
             </View>
 
             {carregando ? (
@@ -298,7 +289,7 @@ export function UsuariosScreen() {
                                     value={nome}
                                     onChangeText={setNome}
                                     placeholder="Nome completo"
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     autoCapitalize="words"
                                     style={styles.input}
                                 />
@@ -310,7 +301,7 @@ export function UsuariosScreen() {
                                     value={email}
                                     onChangeText={setEmail}
                                     placeholder="usuario@email.com"
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                     autoCorrect={false}
@@ -331,7 +322,7 @@ export function UsuariosScreen() {
                                                 ? "Deixe vazio para manter"
                                                 : "Minimo de 6 caracteres"
                                         }
-                                        placeholderTextColor="#87928F"
+                                        placeholderTextColor={colors.muted}
                                         secureTextEntry={!mostrarSenha}
                                         autoCapitalize="none"
                                         style={styles.passwordInput}
@@ -367,10 +358,10 @@ export function UsuariosScreen() {
                                 ]}
                             >
                                 {salvando ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                    <ActivityIndicator color={colors.onDark} />
                                 ) : (
                                     <>
-                                        <Ionicons name="save-outline" size={21} color="#FFFFFF" />
+                                        <Ionicons name="save-outline" size={21} color={colors.onDark} />
                                         <Text style={styles.saveText}>Salvar</Text>
                                     </>
                                 )}
@@ -388,46 +379,10 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background
     },
-    titleRow: {
-        minHeight: 82,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        backgroundColor: colors.surface,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12
-    },
-    title: {
-        color: colors.text,
-        fontSize: 22,
-        fontWeight: "800"
-    },
-    count: {
-        color: colors.muted,
-        fontSize: 13,
-        marginTop: 3
-    },
-    addButton: {
-        minHeight: 42,
-        paddingHorizontal: 14,
-        borderRadius: 6,
-        backgroundColor: colors.primary,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 7
-    },
-    addText: {
-        color: "#FFFFFF",
-        fontSize: 14,
-        fontWeight: "800"
-    },
+    titleRow: { padding: 22 },
     list: {
-        padding: 14,
-        gap: 10
+        paddingHorizontal: 22,
+        paddingBottom: 22
     },
     emptyList: {
         flexGrow: 1
@@ -436,10 +391,8 @@ const styles = StyleSheet.create({
         minHeight: 72,
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderWidth: 1,
+        borderBottomWidth: 1,
         borderColor: colors.border,
-        borderRadius: 8,
-        backgroundColor: colors.surface,
         flexDirection: "row",
         alignItems: "center",
         gap: 10
@@ -447,7 +400,7 @@ const styles = StyleSheet.create({
     avatar: {
         width: 42,
         height: 42,
-        borderRadius: 8,
+        borderRadius: 5,
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: colors.infoSoft
@@ -522,7 +475,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         justifyContent: "flex-end",
-        backgroundColor: "rgba(20, 34, 31, 0.48)"
+        backgroundColor: colors.overlay
     },
     modalDismissArea: {
         flex: 1
@@ -621,7 +574,7 @@ const styles = StyleSheet.create({
         gap: 8
     },
     saveText: {
-        color: "#FFFFFF",
+        color: colors.onDark,
         fontSize: 16,
         fontWeight: "800"
     },

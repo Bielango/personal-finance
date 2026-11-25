@@ -15,7 +15,9 @@ import {
     TextInput,
     View
 } from "react-native";
+import { Botao, Cabecalho, ui } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
+import { converterValor, formatarMoeda } from "../formatacao";
 import {
     ApiError,
     atualizarTransacaoRequest,
@@ -28,7 +30,7 @@ import {
     listarTransacoesRequest,
     pagarTransacaoRequest
 } from "../services/api";
-import { colors } from "../theme";
+import { colors, fonts } from "../theme";
 import {
     Categoria,
     Conta,
@@ -53,14 +55,14 @@ const operacoes: Record<OperacaoTransacao, {
     fundo: string;
     sinal: string;
 }> = {
-    "+": { label: "Recebimento", icon: "arrow-down-outline", cor: colors.primary, fundo: "#EDF6F4", sinal: "+" },
-    "-": { label: "Gasto", icon: "arrow-up-outline", cor: colors.danger, fundo: colors.dangerSoft, sinal: "−" }
+    "+": { label: "Recebimento", icon: "arrow-down-outline", cor: colors.primary, fundo: colors.selection, sinal: "+" },
+    "-": { label: "Gasto", icon: "arrow-up-outline", cor: colors.expense, fundo: colors.warningSoft, sinal: "−" }
 };
 
 const statusInfo: Record<StatusTransacao, { label: string; cor: string; fundo: string }> = {
     a: { label: "Ativa", cor: colors.info, fundo: colors.infoSoft },
-    p: { label: "Paga", cor: colors.primary, fundo: "#EDF6F4" },
-    c: { label: "Cancelada", cor: colors.muted, fundo: "#EEF1F0" }
+    p: { label: "Paga", cor: colors.success, fundo: colors.successSoft },
+    c: { label: "Cancelada", cor: colors.muted, fundo: colors.infoSoft }
 };
 
 const filtrosStatus: { valor: StatusTransacao | null; label: string }[] = [
@@ -79,13 +81,6 @@ const ordenacoes: { valor: OrdenacaoTransacao; label: string; icon: IconName }[]
     { valor: "valor", label: "Valor", icon: "cash-outline" },
     { valor: "conta", label: "Conta", icon: "wallet-outline" }
 ];
-
-function formatarMoeda(valor: number) {
-    return valor.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
-}
 
 function formatarValor(transacao: { operacao: OperacaoTransacao; valor: number }) {
     return `${operacoes[transacao.operacao].sinal} ${formatarMoeda(transacao.valor)}`;
@@ -110,17 +105,6 @@ function periodoDoMes(ano: number, mes: number) {
         inicio: `${ano}-${doisDigitos(mes + 1)}-01`,
         fim: `${ano}-${doisDigitos(mes + 1)}-${doisDigitos(ultimoDia)}`
     };
-}
-
-// Aceita "1234,56", "1.234,56" e "1234.56".
-function converterValor(texto: string) {
-    let normalizado = texto.trim().replace(/\s/g, "").replace(/^R\$/, "");
-    if (normalizado.includes(",")) {
-        normalizado = normalizado.replace(/\./g, "").replace(",", ".");
-    }
-    if (!normalizado) return null;
-    const numero = Number(normalizado);
-    return Number.isFinite(numero) ? numero : null;
 }
 
 function mostrarErro(mensagem: string) {
@@ -164,20 +148,33 @@ function LinhaDetalhe({ icon, label, valor }: { icon: IconName; label: string; v
     );
 }
 
-function StatusBadge({ status }: { status: StatusTransacao }) {
+function StatusBadge({ transacao }: { transacao: TransacaoResumo }) {
+    const { status, agendamentoId, operacao } = transacao;
     const info = statusInfo[status];
+    const label = status === "a" && agendamentoId ? "Pendente"
+        : status === "p" && operacao === "+" ? "Recebida" : info.label;
     return (
         <View style={[styles.badge, { backgroundColor: info.fundo }]}>
-            <Text style={[styles.badgeText, { color: info.cor }]}>{info.label}</Text>
+            <Text style={[styles.badgeText, { color: info.cor }]}>{label}</Text>
         </View>
     );
 }
 
-export function TransacoesScreen() {
+export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrirCategorias }: {
+    inicial?: Pick<TransacaoResumo, "id" | "dataInicio">;
+    abrirAgendamento: (id: number) => void;
+    abrirContas: () => void;
+    abrirCategorias: () => void;
+}) {
     const { token, sair } = useAuth();
 
     // Filtros da listagem
-    const [mes, setMes] = useState(mesAtual);
+    const [mes, setMes] = useState(() => {
+        if (!inicial) return mesAtual();
+        const ano = Number(inicial.dataInicio.slice(0, 4));
+        const numeroMes = Number(inicial.dataInicio.slice(5, 7));
+        return { ano, mes: numeroMes - 1 };
+    });
     const [statusFiltro, setStatusFiltro] = useState<StatusTransacao | null>(null);
     const [ordenarPor, setOrdenarPor] = useState<OrdenacaoTransacao>("data");
     const [ordem, setOrdem] = useState<"asc" | "desc">("desc");
@@ -271,27 +268,31 @@ export function TransacoesScreen() {
         });
     }
 
-    async function tratarErroDeAcao(error: unknown, mensagemPadrao: string) {
+    const tratarErroDeAcao = useCallback(async (error: unknown, mensagemPadrao: string) => {
         if (error instanceof ApiError && error.status === 401) {
             await sair();
             return;
         }
         mostrarErro(error instanceof ApiError ? error.message : mensagemPadrao);
-    }
+    }, [sair]);
 
     // ----- Detalhe -----
 
-    async function abrirDetalhe(item: TransacaoResumo) {
+    const abrirDetalhe = useCallback(async (id: number) => {
         if (!token) return;
         setDetalhe(null);
         setDetalheVisivel(true);
         try {
-            setDetalhe(await buscarTransacaoRequest(item.id, token));
+            setDetalhe(await buscarTransacaoRequest(id, token));
         } catch (error) {
             setDetalheVisivel(false);
             await tratarErroDeAcao(error, "Não foi possível abrir a transação.");
         }
-    }
+    }, [token, tratarErroDeAcao]);
+
+    useEffect(() => {
+        if (inicial) void abrirDetalhe(inicial.id);
+    }, [inicial, abrirDetalhe]);
 
     function fecharDetalhe() {
         if (!executando) setDetalheVisivel(false);
@@ -323,10 +324,13 @@ export function TransacoesScreen() {
         const efeito = transacao.operacao === "+"
             ? `Vai entrar ${formatarMoeda(transacao.valor)} na conta ${transacao.contaNome}.`
             : `Vai sair ${formatarMoeda(transacao.valor)} da conta ${transacao.contaNome}.`;
+        const acao = transacao.operacao === "+"
+            ? transacao.status === "p" ? "Receber de novo" : "Confirmar recebimento"
+            : transacao.status === "p" ? "Pagar de novo" : "Confirmar pagamento";
         confirmar(
-            transacao.status === "p" ? "Pagar de novo" : "Pagar transação",
-            `Pagar "${transacao.titulo}"? ${efeito}`,
-            "Pagar",
+            acao,
+            `${acao} de "${transacao.titulo}"? ${efeito}`,
+            "Confirmar",
             false,
             () => void executarAcao("pagar", transacao)
         );
@@ -449,10 +453,10 @@ export function TransacoesScreen() {
             <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Abrir ${item.titulo}`}
-                onPress={() => void abrirDetalhe(item)}
+                onPress={() => void abrirDetalhe(item.id)}
                 style={({ pressed }) => [styles.item, cancelada && styles.itemCanceled, pressed && styles.pressed]}
             >
-                <View style={[styles.itemIcon, { backgroundColor: cancelada ? "#EEF1F0" : info.fundo }]}>
+                <View style={[styles.itemIcon, { backgroundColor: cancelada ? colors.infoSoft : info.fundo }]}>
                     <Ionicons name={info.icon} size={22} color={cancelada ? colors.muted : info.cor} />
                 </View>
                 <View style={styles.itemInfo}>
@@ -463,14 +467,14 @@ export function TransacoesScreen() {
                         >
                             {item.titulo}
                         </Text>
-                        <StatusBadge status={item.status} />
+                        <StatusBadge transacao={item} />
                     </View>
                     <Text numberOfLines={1} style={styles.itemDetails}>
                         {item.contaNome} · {item.categoriaNome}
                     </Text>
                     <View style={styles.itemBottomLine}>
                         <Text numberOfLines={1} style={styles.itemDate}>
-                            #{item.id} · {formatarDataHora(item.dataInicio)}
+                            {item.agendamentoId ? `Agendada · ${formatarDataHora(item.dataInicio)}` : formatarDataHora(item.dataInicio)}
                         </Text>
                         <Text
                             numberOfLines={1}
@@ -486,22 +490,13 @@ export function TransacoesScreen() {
     }
 
     const infoDetalhe = detalhe ? operacoes[detalhe.operacao] : null;
+    const agendamentoId = detalhe?.agendamentoId;
 
     return (
         <View style={styles.screen}>
             <View style={styles.titleRow}>
-                <View>
-                    <Text style={styles.title}>Transações</Text>
-                    <Text style={styles.count}>{transacoes.length} no mês</Text>
-                </View>
-                <Pressable
-                    accessibilityLabel="Adicionar transação"
-                    onPress={abrirNovaTransacao}
-                    style={({ pressed }) => [styles.addButton, pressed && styles.pressed]}
-                >
-                    <Ionicons name="add" size={22} color="#FFFFFF" />
-                    <Text style={styles.addText}>Adicionar</Text>
-                </Pressable>
+                <Cabecalho titulo="Transações" subtitulo="Consulte e confirme receitas e despesas."
+                    acao={<Botao label="Nova transação" icon="add" onPress={abrirNovaTransacao} />} />
             </View>
 
             <View style={styles.periodBand}>
@@ -524,15 +519,15 @@ export function TransacoesScreen() {
                 </View>
                 <View style={styles.totalsRow}>
                     <View style={styles.totalBox}>
-                        <Text style={styles.totalLabel}>ENTRADAS</Text>
+                        <Text style={styles.totalLabel}>Receitas do filtro</Text>
                         <Text numberOfLines={1} style={[styles.totalValue, { color: colors.primary }]}>
                             {formatarMoeda(totais.entradas)}
                         </Text>
                     </View>
                     <View style={styles.totalDivider} />
                     <View style={styles.totalBox}>
-                        <Text style={styles.totalLabel}>SAÍDAS</Text>
-                        <Text numberOfLines={1} style={[styles.totalValue, { color: colors.danger }]}>
+                        <Text style={styles.totalLabel}>Despesas do filtro</Text>
+                        <Text numberOfLines={1} style={[styles.totalValue, { color: colors.expense }]}>
                             {formatarMoeda(totais.saidas)}
                         </Text>
                     </View>
@@ -727,7 +722,7 @@ export function TransacoesScreen() {
                                         </Text>
                                         <Text style={styles.detailOperation}>{infoDetalhe.label}</Text>
                                     </View>
-                                    <StatusBadge status={detalhe.status} />
+                                    <StatusBadge transacao={detalhe} />
                                 </View>
 
                                 <View style={styles.detailList}>
@@ -735,7 +730,7 @@ export function TransacoesScreen() {
                                     <LinhaDetalhe icon="pricetag-outline" label="Categoria" valor={detalhe.categoriaNome} />
                                     <LinhaDetalhe
                                         icon="calendar-outline"
-                                        label="Criada em"
+                                        label={agendamentoId ? "Vencimento" : "Criada em"}
                                         valor={formatarDataHora(detalhe.dataInicio)}
                                     />
                                     {!!detalhe.dataFim && (
@@ -755,8 +750,7 @@ export function TransacoesScreen() {
                                     </Text>
                                 </View>
 
-                                {detalhe.status !== "c" ? (
-                                    <>
+                                {(detalhe.status === "a" || (detalhe.status === "p" && !agendamentoId)) && (
                                         <Pressable
                                             disabled={executando}
                                             onPress={() => confirmarPagamento(detalhe)}
@@ -767,16 +761,23 @@ export function TransacoesScreen() {
                                             ]}
                                         >
                                             {executando ? (
-                                                <ActivityIndicator color="#FFFFFF" />
+                                                <ActivityIndicator color={colors.onDark} />
                                             ) : (
                                                 <>
-                                                    <Ionicons name="checkmark-done-outline" size={21} color="#FFFFFF" />
+                                                    <Ionicons name="checkmark-done-outline" size={21} color={colors.onDark} />
                                                     <Text style={styles.saveText}>
-                                                        {detalhe.status === "p" ? "Pagar de novo" : "Pagar"}
+                                                        {detalhe.operacao === "+"
+                                                            ? detalhe.status === "p" ? "Receber de novo" : "Confirmar recebimento"
+                                                            : detalhe.status === "p" ? "Pagar de novo" : "Confirmar pagamento"}
                                                     </Text>
                                                 </>
                                             )}
                                         </Pressable>
+                                )}
+                                {agendamentoId ? (
+                                    <Botao label="Abrir agendamento" icon="calendar-outline" variant="secondary"
+                                        disabled={executando} onPress={() => abrirAgendamento(agendamentoId)} />
+                                ) : detalhe.status !== "c" ? (
                                         <View style={styles.actionRow}>
                                             <Pressable
                                                 disabled={executando}
@@ -804,7 +805,6 @@ export function TransacoesScreen() {
                                                 <Text style={[styles.secondaryText, { color: colors.danger }]}>Cancelar</Text>
                                             </Pressable>
                                         </View>
-                                    </>
                                 ) : (
                                     <Pressable
                                         disabled={executando}
@@ -817,10 +817,10 @@ export function TransacoesScreen() {
                                         ]}
                                     >
                                         {executando ? (
-                                            <ActivityIndicator color="#FFFFFF" />
+                                            <ActivityIndicator color={colors.onDark} />
                                         ) : (
                                             <>
-                                                <Ionicons name="trash-outline" size={21} color="#FFFFFF" />
+                                                <Ionicons name="trash-outline" size={21} color={colors.onDark} />
                                                 <Text style={styles.saveText}>Excluir</Text>
                                             </>
                                         )}
@@ -863,12 +863,13 @@ export function TransacoesScreen() {
                             contentContainerStyle={styles.form}
                             keyboardShouldPersistTaps="handled"
                         >
-                            {contas.length === 0 && (
-                                <View style={styles.infoBox}>
-                                    <Ionicons name="information-circle-outline" size={19} color={colors.info} />
-                                    <Text style={styles.infoText}>
-                                        Cadastre uma conta na aba Contas antes de lançar transações.
-                                    </Text>
+                            {(contas.length === 0 || categorias.length === 0) && (
+                                <View style={ui.section}>
+                                    <Text style={ui.muted}>Você precisa de uma conta e uma categoria para lançar transações.</Text>
+                                    <View style={ui.wrap}>
+                                        {contas.length === 0 && <Botao label="Ir para Contas" variant="secondary" onPress={abrirContas} />}
+                                        {categorias.length === 0 && <Botao label="Ir para Categorias" variant="secondary" onPress={abrirCategorias} />}
+                                    </View>
                                 </View>
                             )}
 
@@ -916,7 +917,7 @@ export function TransacoesScreen() {
                                     value={titulo}
                                     onChangeText={setTitulo}
                                     placeholder={operacao === "+" ? "Ex.: Salário" : "Ex.: Mercado"}
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     maxLength={100}
                                     style={styles.input}
                                 />
@@ -930,7 +931,7 @@ export function TransacoesScreen() {
                                         value={valor}
                                         onChangeText={setValor}
                                         placeholder="0,00"
-                                        placeholderTextColor="#87928F"
+                                        placeholderTextColor={colors.muted}
                                         keyboardType="decimal-pad"
                                         style={styles.moneyInput}
                                     />
@@ -1053,7 +1054,7 @@ export function TransacoesScreen() {
                                     value={descricao}
                                     onChangeText={setDescricao}
                                     placeholder="Detalhes da transação"
-                                    placeholderTextColor="#87928F"
+                                    placeholderTextColor={colors.muted}
                                     multiline
                                     maxLength={5000}
                                     textAlignVertical="top"
@@ -1087,10 +1088,10 @@ export function TransacoesScreen() {
                                 ]}
                             >
                                 {salvando ? (
-                                    <ActivityIndicator color="#FFFFFF" />
+                                    <ActivityIndicator color={colors.onDark} />
                                 ) : (
                                     <>
-                                        <Ionicons name="save-outline" size={21} color="#FFFFFF" />
+                                        <Ionicons name="save-outline" size={21} color={colors.onDark} />
                                         <Text style={styles.saveText}>Salvar</Text>
                                     </>
                                 )}
@@ -1108,50 +1109,14 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: colors.background
     },
-    titleRow: {
-        minHeight: 82,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        backgroundColor: colors.surface,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12
-    },
-    title: {
-        color: colors.text,
-        fontSize: 22,
-        fontWeight: "800"
-    },
-    count: {
-        color: colors.muted,
-        fontSize: 13,
-        marginTop: 3
-    },
-    addButton: {
-        minHeight: 42,
-        paddingHorizontal: 14,
-        borderRadius: 6,
-        backgroundColor: colors.primary,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6
-    },
-    addText: {
-        color: "#FFFFFF",
-        fontSize: 14,
-        fontWeight: "800"
-    },
+    titleRow: { padding: 22 },
     periodBand: {
         paddingHorizontal: 12,
         paddingTop: 8,
         paddingBottom: 12,
-        backgroundColor: colors.infoSoft,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border
+        marginHorizontal: 22,
+        borderRadius: 6,
+        backgroundColor: colors.infoSoft
     },
     monthRow: {
         flexDirection: "row",
@@ -1160,7 +1125,7 @@ const styles = StyleSheet.create({
     },
     monthButton: {
         width: 44,
-        height: 40,
+        height: 44,
         alignItems: "center",
         justifyContent: "center"
     },
@@ -1190,8 +1155,8 @@ const styles = StyleSheet.create({
         fontWeight: "800"
     },
     totalValue: {
+        fontFamily: fonts.numbers,
         fontSize: 19,
-        fontWeight: "800",
         marginTop: 3
     },
     filterBar: {
@@ -1221,7 +1186,7 @@ const styles = StyleSheet.create({
     },
     chipSelected: {
         borderColor: colors.primary,
-        backgroundColor: "#EDF6F4"
+        backgroundColor: colors.selection
     },
     chipText: {
         color: colors.muted,
@@ -1278,31 +1243,28 @@ const styles = StyleSheet.create({
         gap: 6
     },
     list: {
-        padding: 14,
-        gap: 10
+        padding: 22
     },
     emptyList: {
         flexGrow: 1
     },
     item: {
         minHeight: 92,
-        paddingHorizontal: 12,
+        paddingHorizontal: 6,
         paddingVertical: 11,
-        borderWidth: 1,
+        borderBottomWidth: 1,
         borderColor: colors.border,
-        borderRadius: 8,
-        backgroundColor: colors.surface,
         flexDirection: "row",
         alignItems: "center",
         gap: 10
     },
     itemCanceled: {
-        opacity: 0.72
+        opacity: 0.92
     },
     itemIcon: {
         width: 44,
         height: 44,
-        borderRadius: 8,
+        borderRadius: 5,
         alignItems: "center",
         justifyContent: "center"
     },
@@ -1343,8 +1305,10 @@ const styles = StyleSheet.create({
         fontSize: 12
     },
     itemValue: {
-        fontSize: 15,
-        fontWeight: "800"
+        // O valor nunca encolhe: quem corta com "..." é a data.
+        flexShrink: 0,
+        fontFamily: fonts.numbers,
+        fontSize: 14
     },
     badge: {
         paddingHorizontal: 8,
@@ -1389,7 +1353,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         justifyContent: "flex-end",
-        backgroundColor: "rgba(20, 34, 31, 0.48)"
+        backgroundColor: colors.overlay
     },
     modalDismissArea: {
         flex: 1
@@ -1434,8 +1398,8 @@ const styles = StyleSheet.create({
         gap: 12
     },
     detailValue: {
-        fontSize: 24,
-        fontWeight: "800"
+        fontFamily: fonts.numbers,
+        fontSize: 24
     },
     detailOperation: {
         color: colors.muted,
@@ -1582,7 +1546,7 @@ const styles = StyleSheet.create({
         gap: 9
     },
     selectedOption: {
-        backgroundColor: "#EDF6F4"
+        backgroundColor: colors.selection
     },
     dropdownTextArea: {
         flex: 1,
@@ -1670,7 +1634,7 @@ const styles = StyleSheet.create({
         gap: 8
     },
     saveText: {
-        color: "#FFFFFF",
+        color: colors.onDark,
         fontSize: 16,
         fontWeight: "800"
     },

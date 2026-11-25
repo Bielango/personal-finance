@@ -3,6 +3,7 @@ import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import { autenticar } from "./middlewares/autenticar";
 import { erroHandler } from "./middlewares/error-handler";
+import { agendamentosRoutes } from "./routes/agendamentos-routes";
 import { authRoutes } from "./routes/auth-routes";
 import { categoriasRoutes } from "./routes/categorias-routes";
 import { contasRoutes } from "./routes/contas-routes";
@@ -44,6 +45,7 @@ app.use("/usuarios", autenticar, usuariosRoutes);
 app.use("/contas", autenticar, contasRoutes);
 app.use("/categorias", autenticar, categoriasRoutes);
 app.use("/transacoes", autenticar, transacoesRoutes);
+app.use("/agendamentos", autenticar, agendamentosRoutes);
 
 app.use((_request, response) => {
     response.status(404).json({ mensagem: "Rota não encontrada" });

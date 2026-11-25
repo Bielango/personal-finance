@@ -4,6 +4,7 @@ import { CategoriaRepository } from "../repositories/categoria-repository";
 import { ContaRepository } from "../repositories/conta-repository";
 import { TransacaoRepository } from "../repositories/transacao-repository";
 import { TransacaoFiltro, TransacaoInput } from "../schemas/transacao-schema";
+import { AgendamentoService } from "./agendamento-service";
 
 // Ciclo: criar -> ativa (a) -> paga (p), que pode ser paga de novo.
 // Ativa ou paga pode ser editada ou cancelada (c). Só cancelada pode ser excluída.
@@ -11,10 +12,12 @@ export class TransacaoService {
     constructor(
         private readonly repository: TransacaoRepository,
         private readonly contaRepository: ContaRepository,
-        private readonly categoriaRepository: CategoriaRepository
+        private readonly categoriaRepository: CategoriaRepository,
+        private readonly agendamentoService: AgendamentoService
     ) {}
 
     listar(filtro: TransacaoFiltro) {
+        this.agendamentoService.sincronizar();
         return this.repository.listar(filtro);
     }
 
@@ -31,7 +34,9 @@ export class TransacaoService {
 
     // Não mexe no saldo: só um novo pagamento lança o valor na conta.
     atualizar(id: number, dados: TransacaoInput) {
-        this.garantirNaoCancelada(this.buscarPorId(id), "editada");
+        const atual = this.buscarPorId(id);
+        this.garantirAvulsa(atual);
+        this.garantirNaoCancelada(atual, "editada");
         this.validarRelacoes(dados);
 
         const transacao = this.repository.atualizar(id, dados);
@@ -41,16 +46,23 @@ export class TransacaoService {
 
     // Cada pagamento soma (+) ou subtrai (-) o valor do saldo da conta.
     pagar(id: number) {
-        this.garantirNaoCancelada(this.buscarPorId(id), "paga");
+        const atual = this.buscarPorId(id);
+        this.garantirNaoCancelada(atual, "paga");
 
         const transacao = this.repository.pagar(id);
-        if (!transacao) throw new AppError("Transação não encontrada", 404);
+        if (!transacao) {
+            const estado = this.buscarPorId(id);
+            this.garantirNaoCancelada(estado, "paga");
+            throw new AppError("Este vencimento já foi baixado", 409);
+        }
         return transacao;
     }
 
     // O que já foi pago não volta para a conta.
     cancelar(id: number) {
-        if (this.buscarPorId(id).status === "c") {
+        const atual = this.buscarPorId(id);
+        this.garantirAvulsa(atual);
+        if (atual.status === "c") {
             throw new AppError("A transação já está cancelada", 409);
         }
 
@@ -60,7 +72,9 @@ export class TransacaoService {
     }
 
     excluir(id: number) {
-        if (this.buscarPorId(id).status !== "c") {
+        const atual = this.buscarPorId(id);
+        this.garantirAvulsa(atual);
+        if (atual.status !== "c") {
             throw new AppError("Só é possível excluir transações canceladas", 409);
         }
         if (!this.repository.excluir(id)) {
@@ -71,6 +85,12 @@ export class TransacaoService {
     private garantirNaoCancelada(transacao: Transacao, acao: string) {
         if (transacao.status === "c") {
             throw new AppError(`Transação cancelada não pode ser ${acao}`, 409);
+        }
+    }
+
+    private garantirAvulsa(transacao: Transacao) {
+        if (transacao.agendamentoId !== null) {
+            throw new AppError("Gerencie esta ocorrência pelo agendamento", 409);
         }
     }
 

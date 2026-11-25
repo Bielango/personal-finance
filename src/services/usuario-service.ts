@@ -1,4 +1,5 @@
 import { AppError } from "../errors/app-error";
+import { AgendamentoRepository } from "../repositories/agendamento-repository";
 import { TransacaoRepository } from "../repositories/transacao-repository";
 import { UsuarioRepository } from "../repositories/usuario-repository";
 import { UsuarioAtualizacaoInput, UsuarioInput } from "../schemas/usuario-schema";
@@ -6,7 +7,8 @@ import { UsuarioAtualizacaoInput, UsuarioInput } from "../schemas/usuario-schema
 export class UsuarioService {
     constructor(
         private readonly repository: UsuarioRepository,
-        private readonly transacaoRepository: TransacaoRepository
+        private readonly transacaoRepository: TransacaoRepository,
+        private readonly agendamentoRepository: AgendamentoRepository
     ) {}
 
     listar() {
@@ -50,12 +52,13 @@ export class UsuarioService {
         if (id === usuarioAutenticadoId) {
             throw new AppError("Voce nao pode excluir o proprio usuario", 409);
         }
-        // As contas do usuario sao apagadas junto, entao nenhuma pode ter transacoes.
-        if (this.transacaoRepository.existePorUsuario(id)) {
-            throw new AppError("O usuario possui contas com transacoes e nao pode ser excluido", 409);
-        }
-        if (!this.repository.excluir(id)) {
-            throw new AppError("Usuario nao encontrado", 404);
-        }
+        this.agendamentoRepository.atomico(() => {
+            if (this.agendamentoRepository.existePorUsuario(id) || this.transacaoRepository.existePorUsuario(id)) {
+                throw new AppError("O usuário possui contas com agendamentos ou transações e não pode ser excluído", 409);
+            }
+            if (!this.repository.excluir(id)) {
+                throw new AppError("Usuário não encontrado", 404);
+            }
+        });
     }
 }
