@@ -1,7 +1,7 @@
 import { AppError } from "../errors/app-error";
 import { Agendamento, AgendamentoDetalhe } from "../models/agendamento";
+import { CATEGORIA_UNICA } from "../models/categoria";
 import { AgendamentoRegistro, AgendamentoRepository } from "../repositories/agendamento-repository";
-import { CategoriaRepository } from "../repositories/categoria-repository";
 import { ContaRepository } from "../repositories/conta-repository";
 import { TransacaoRepository } from "../repositories/transacao-repository";
 import { AgendamentoInput } from "../schemas/agendamento-schema";
@@ -50,8 +50,7 @@ export class AgendamentoService {
     constructor(
         private readonly repository: AgendamentoRepository,
         private readonly transacaoRepository: TransacaoRepository,
-        private readonly contaRepository: ContaRepository,
-        private readonly categoriaRepository: CategoriaRepository
+        private readonly contaRepository: ContaRepository
     ) {}
 
     listar() {
@@ -130,9 +129,6 @@ export class AgendamentoService {
         if (!this.contaRepository.buscarPorId(dados.contaId)) {
             throw new AppError("Conta não encontrada", 404);
         }
-        if (!this.categoriaRepository.buscarPorId(dados.categoriaId)) {
-            throw new AppError("Categoria não encontrada", 404);
-        }
     }
 
     private gerarOcorrencias(agenda: AgendamentoRegistro) {
@@ -152,7 +148,8 @@ export class AgendamentoService {
             if (agenda.tipo === "recorrente" && dia > horizonte && ultimoVencimento > hoje) break;
             const transacao = this.transacaoRepository.criar({
                 contaId: agenda.contaId,
-                categoriaId: agenda.categoriaId,
+                // Cada parcela é paga uma vez, como a Única.
+                categoriaId: CATEGORIA_UNICA,
                 titulo: agenda.titulo,
                 descricao: agenda.descricao ?? undefined,
                 operacao: agenda.operacao,

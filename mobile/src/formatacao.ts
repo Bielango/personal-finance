@@ -1,3 +1,5 @@
+import { TransacaoResumo } from "./types";
+
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export function formatarMoeda(valor: number) {
@@ -25,4 +27,12 @@ export function converterValor(texto: string) {
     const normalizado = valor.includes(",") ? valor.replace(/\./g, "").replace(",", ".") : valor;
     const numero = Number(normalizado);
     return Number.isFinite(numero) ? numero : null;
+}
+
+// Avulsas mostram a categoria; transações de agendamento, a parcela.
+export function descreverOrigem(transacao: TransacaoResumo) {
+    if (transacao.agendamentoId === null) return transacao.categoriaNome;
+    return transacao.totalParcelas !== null
+        ? `Parcela ${transacao.numeroOcorrencia}/${transacao.totalParcelas}`
+        : `Ocorrência ${transacao.numeroOcorrencia}`;
 }

@@ -163,7 +163,7 @@ transacoesRoutes.put(
  * /transacoes/{id}/pagar:
  *   patch:
  *     summary: Paga a transação e lança o valor no saldo da conta
- *     description: Recebimento (+) soma e gasto (-) subtrai. Uma transação paga pode ser paga de novo.
+ *     description: Recebimento (+) soma e gasto (-) subtrai. Só a categoria Recorrente pode ser paga de novo; a Única e as parcelas de agendamento são pagas uma vez.
  *     tags: [Transações]
  *     parameters:
  *       - in: path
@@ -180,7 +180,7 @@ transacoesRoutes.put(
  *       404:
  *         description: Transação não encontrada
  *       409:
- *         description: Transação cancelada não pode ser paga
+ *         description: Transação cancelada, ou Única/parcela já paga
  */
 transacoesRoutes.patch("/:id/pagar", validar(transacaoIdSchema, "params"), pagarTransacao);
 

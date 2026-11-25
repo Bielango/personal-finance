@@ -21,22 +21,27 @@ export function atomico<T>(operacao: () => T): T {
     }
 }
 
+function temColuna(tabela: string, coluna: string) {
+    return db.prepare(`PRAGMA table_info(${tabela})`).all().some((registro) => registro.name === coluna);
+}
+
+function tabelaExiste(tabela: string) {
+    return !!db.prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = ?").get(tabela);
+}
+
+// Bancos de antes das categorias fixas (Única e Recorrente) não são convertidos.
+if ((tabelaExiste("CATEGORIA") && !temColuna("CATEGORIA", "CAT_REPETIR"))
+    || (tabelaExiste("AGENDAMENTO") && temColuna("AGENDAMENTO", "AGE_CAT_ID"))) {
+    throw new Error(
+        `O banco ${env.DATABASE_FILE} está no formato antigo de categorias. Apague o arquivo e inicie a API de novo.`
+    );
+}
+
 atomico(() => {
-    const categoriasExistiam = db.prepare("SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'CATEGORIA'").get();
     db.exec(fs.readFileSync(path.resolve(process.cwd(), "src/database/schema.sql"), "utf8"));
-    if (!categoriasExistiam) {
-        db.exec(`
-            INSERT INTO CATEGORIA (CAT_NOME)
-            VALUES ('Alimentação'), ('Moradia'), ('Transporte'), ('Saúde'), ('Lazer'), ('Salário')
-        `);
-    }
 
     // Mantém compatibilidade com bancos criados antes da troca de saldoInicial para saldo.
-    const colunasConta = db.prepare("PRAGMA table_info(CONTA)").all();
-    const temSaldoInicial = colunasConta.some((coluna) => coluna.name === "CON_SALDO_INICIAL");
-    const temSaldo = colunasConta.some((coluna) => coluna.name === "CON_SALDO");
-
-    if (temSaldoInicial && !temSaldo) {
+    if (temColuna("CONTA", "CON_SALDO_INICIAL") && !temColuna("CONTA", "CON_SALDO")) {
         db.exec("ALTER TABLE CONTA RENAME COLUMN CON_SALDO_INICIAL TO CON_SALDO");
     }
 });

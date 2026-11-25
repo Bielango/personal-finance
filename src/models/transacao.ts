@@ -19,6 +19,8 @@ export interface TransacaoResumo {
     categoriaNome: string;
     agendamentoId: number | null;
     numeroOcorrencia: number | null;
+    // Total de parcelas do agendamento parcelado (null em avulsas e recorrências).
+    totalParcelas: number | null;
 }
 
 export interface Transacao extends TransacaoResumo {

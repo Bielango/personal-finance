@@ -16,9 +16,11 @@ export interface Conta {
     usuarioNome: string;
 }
 
+// Categorias fixas: Única (paga uma vez) e Recorrente (pode ser paga várias vezes).
 export interface Categoria {
     id: number;
     nome: string;
+    permiteRepetir: boolean;
 }
 
 // + = recebimento, - = gasto
@@ -44,6 +46,7 @@ export interface TransacaoResumo {
     categoriaNome: string;
     agendamentoId: number | null;
     numeroOcorrencia: number | null;
+    totalParcelas: number | null;
 }
 
 export interface Transacao extends TransacaoResumo {
@@ -70,8 +73,6 @@ export interface Agendamento {
     valor: number;
     contaId: number;
     contaNome: string;
-    categoriaId: number;
-    categoriaNome: string;
     tipo: "parcelado" | "recorrente";
     primeiroVencimento: string;
     periodicidade: Periodicidade | null;

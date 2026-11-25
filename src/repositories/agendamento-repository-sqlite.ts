@@ -9,7 +9,6 @@ const SELECT_AGENDAMENTO = `
            A.AGE_PRIMEIRO AS primeiroVencimento, A.AGE_PERIODICIDADE AS periodicidade,
            A.AGE_PARCELAS AS parcelas, A.AGE_ATE AS ate, A.AGE_CANCELADO AS cancelado,
            A.AGE_CON_ID AS contaId, C.CON_NOME AS contaNome,
-           A.AGE_CAT_ID AS categoriaId, K.CAT_NOME AS categoriaNome,
            COALESCE(MAX(O.OCO_NUMERO), 0) AS ultimaOcorrencia,
            MAX(T.TRA_DATA_INICIO) AS ultimoVencimento,
            MIN(CASE WHEN T.TRA_STATUS = 'a' THEN T.TRA_DATA_INICIO END) AS primeiraPendente,
@@ -17,7 +16,6 @@ const SELECT_AGENDAMENTO = `
            COUNT(CASE WHEN T.TRA_STATUS = 'p' THEN 1 END) AS pagas
     FROM AGENDAMENTO A
     JOIN CONTA C ON C.CON_ID = A.AGE_CON_ID
-    JOIN CATEGORIA K ON K.CAT_ID = A.AGE_CAT_ID
     LEFT JOIN OCORRENCIA O ON O.OCO_AGE_ID = A.AGE_ID
     LEFT JOIN TRANSACAO T ON T.TRA_ID = O.OCO_TRA_ID`;
 
@@ -32,7 +30,7 @@ function mapear(registro: Record<string, unknown>): AgendamentoRegistro {
 
 function valores(dados: AgendamentoInput) {
     return [
-        dados.contaId, dados.categoriaId, dados.titulo, dados.descricao || null,
+        dados.contaId, dados.titulo, dados.descricao || null,
         dados.operacao, Math.round(dados.valor * 100), dados.tipo, dados.primeiroVencimento,
         dados.tipo === "recorrente" ? dados.periodicidade : null,
         dados.tipo === "parcelado" ? dados.parcelas : null,
@@ -63,16 +61,16 @@ export class AgendamentoRepositorySqlite implements AgendamentoRepository {
     criar(dados: AgendamentoInput): number {
         const resultado = db.prepare(`
             INSERT INTO AGENDAMENTO (
-                AGE_CON_ID, AGE_CAT_ID, AGE_TITULO, AGE_DESCRICAO, AGE_OPERACAO,
+                AGE_CON_ID, AGE_TITULO, AGE_DESCRICAO, AGE_OPERACAO,
                 AGE_VALOR, AGE_TIPO, AGE_PRIMEIRO, AGE_PERIODICIDADE, AGE_PARCELAS, AGE_ATE
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(...valores(dados));
         return Number(resultado.lastInsertRowid);
     }
 
     atualizar(id: number, dados: AgendamentoInput) {
         db.prepare(`
-            UPDATE AGENDAMENTO SET AGE_CON_ID = ?, AGE_CAT_ID = ?, AGE_TITULO = ?,
+            UPDATE AGENDAMENTO SET AGE_CON_ID = ?, AGE_TITULO = ?,
                 AGE_DESCRICAO = ?, AGE_OPERACAO = ?, AGE_VALOR = ?, AGE_TIPO = ?,
                 AGE_PRIMEIRO = ?, AGE_PERIODICIDADE = ?, AGE_PARCELAS = ?, AGE_ATE = ?
             WHERE AGE_ID = ?

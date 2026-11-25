@@ -9,7 +9,6 @@ import { Marca } from "./src/components/Marca";
 import { Botao, IconName, Janela, ui } from "./src/components/ui";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { AgendamentosScreen } from "./src/screens/AgendamentosScreen";
-import { CategoriasScreen } from "./src/screens/CategoriasScreen";
 import { ContasScreen } from "./src/screens/ContasScreen";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { TransacoesScreen } from "./src/screens/TransacoesScreen";
@@ -19,7 +18,7 @@ import { colors, fonts } from "./src/theme";
 import { TransacaoResumo } from "./src/types";
 
 type Tela =
-    { aba: "visao" | "contas" | "categorias" | "usuarios" } |
+    { aba: "visao" | "contas" | "usuarios" } |
     { aba: "agendamentos"; id?: number } |
     { aba: "transacoes"; inicial?: Pick<TransacaoResumo, "id" | "dataInicio"> };
 
@@ -28,7 +27,6 @@ const abas: { aba: Tela["aba"]; label: string; curto: string; icon: IconName }[]
     { aba: "contas", label: "Contas", curto: "Contas", icon: "wallet-outline" },
     { aba: "transacoes", label: "Transações", curto: "Transações", icon: "swap-vertical-outline" },
     { aba: "agendamentos", label: "Agendamentos", curto: "Agenda", icon: "calendar-outline" },
-    { aba: "categorias", label: "Categorias", curto: "Categorias", icon: "pricetags-outline" },
     { aba: "usuarios", label: "Usuários", curto: "Usuários", icon: "people-outline" }
 ];
 
@@ -41,7 +39,6 @@ function ConteudoAutenticado() {
     const listaTradicional = tela.aba === "contas" || tela.aba === "transacoes" || tela.aba === "usuarios";
     const primeiraLetra = usuario?.nome.trim().charAt(0).toUpperCase() || "?";
     const abrirContas = () => navegar({ aba: "contas" });
-    const abrirCategorias = () => navegar({ aba: "categorias" });
     const abrirAgendamentos = () => navegar({ aba: "agendamentos" });
     const abrirTransacao = (item: TransacaoResumo) => navegar({ aba: "transacoes", inicial: item });
 
@@ -109,12 +106,11 @@ function ConteudoAutenticado() {
                 <View style={[styles.workspace, desktop && listaTradicional && styles.workspaceInset]}>
                     {tela.aba === "visao" && <VisaoGeralScreen abrirContas={abrirContas} abrirAgendamentos={abrirAgendamentos} abrirTransacao={abrirTransacao} />}
                     {tela.aba === "contas" && <ContasScreen />}
-                    {tela.aba === "categorias" && <CategoriasScreen />}
                     {tela.aba === "transacoes" && <TransacoesScreen key={tela.inicial?.id ?? "lista"} inicial={tela.inicial}
                         abrirAgendamento={id => navegar({ aba: "agendamentos", id })}
-                        abrirContas={abrirContas} abrirCategorias={abrirCategorias} />}
+                        abrirContas={abrirContas} />}
                     {tela.aba === "agendamentos" && <AgendamentosScreen key={tela.id ?? "lista"} inicial={tela.id}
-                        abrirContas={abrirContas} abrirCategorias={abrirCategorias} abrirTransacao={abrirTransacao} />}
+                        abrirContas={abrirContas} abrirTransacao={abrirTransacao} />}
                     {tela.aba === "usuarios" && <UsuariosScreen />}
                 </View>
                 {!desktop && <View accessibilityRole="tablist" style={styles.tabs}>{renderAbas()}</View>}

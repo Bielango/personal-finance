@@ -8,10 +8,10 @@ import { useAuth } from "../context/AuthContext";
 import { converterData, converterValor, dataLocal, formatarData, formatarMoeda } from "../formatacao";
 import {
     AgendamentoInput, ApiError, buscarAgendamentoRequest, cancelarAgendamentoRequest, excluirAgendamentoRequest,
-    listarAgendamentosRequest, listarCategoriasRequest, listarContasRequest, salvarAgendamentoRequest
+    listarAgendamentosRequest, listarContasRequest, salvarAgendamentoRequest
 } from "../services/api";
 import { colors } from "../theme";
-import { Agendamento, AgendamentoDetalhe, Categoria, Conta, OperacaoTransacao, Periodicidade, TransacaoResumo } from "../types";
+import { Agendamento, AgendamentoDetalhe, Conta, OperacaoTransacao, Periodicidade, TransacaoResumo } from "../types";
 
 const frequencias: { valor: Periodicidade; label: string }[] = [
     { valor: "semanal", label: "Semanal" }, { valor: "mensal", label: "Mensal" }, { valor: "anual", label: "Anual" }
@@ -46,10 +46,9 @@ function ValorAgenda({ agenda }: { agenda: Agendamento }) {
     );
 }
 
-function Formulario({ agenda, contas, categorias, ocupado, erro, salvar, fechar }: {
+function Formulario({ agenda, contas, ocupado, erro, salvar, fechar }: {
     agenda?: Agendamento;
     contas: Conta[];
-    categorias: Categoria[];
     ocupado: boolean;
     erro: string;
     salvar: (dados: AgendamentoInput) => void;
@@ -66,7 +65,6 @@ function Formulario({ agenda, contas, categorias, ocupado, erro, salvar, fechar 
     const [frequencia, setFrequencia] = useState<Periodicidade>(agenda?.periodicidade ?? "mensal");
     const [ate, setAte] = useState(agenda?.ate ? formatarData(agenda.ate) : "");
     const [contaId, setConta] = useState<number | null>(agenda?.contaId ?? contas[0]?.id ?? null);
-    const [categoriaId, setCategoria] = useState<number | null>(agenda?.categoriaId ?? null);
     const [erroLocal, setErroLocal] = useState("");
     const valorNumerico = converterValor(valor);
     const totalParcelas = Number(parcelas);
@@ -77,12 +75,12 @@ function Formulario({ agenda, contas, categorias, ocupado, erro, salvar, fechar 
     const resto = centavos % totalParcelas;
 
     function enviar() {
-        if (!contaId || !categoriaId || !valorNumerico || valorNumerico < 0 || titulo.trim().length < 2) {
-            setErroLocal("Preencha título, valor, conta e categoria.");
+        if (!contaId || !valorNumerico || valorNumerico < 0 || titulo.trim().length < 2) {
+            setErroLocal("Preencha título, valor e conta.");
             return;
         }
         setErroLocal("");
-        const comum = { contaId, categoriaId, titulo, descricao, valor: valorNumerico, operacao, primeiroVencimento: converterData(primeiro) };
+        const comum = { contaId, titulo, descricao, valor: valorNumerico, operacao, primeiroVencimento: converterData(primeiro) };
         salvar(tipo === "parcelado"
             ? { ...comum, tipo, parcelas: totalParcelas }
             : { ...comum, tipo, periodicidade: frequencia, ate: ate.trim() ? converterData(ate) : undefined });
@@ -138,24 +136,20 @@ function Formulario({ agenda, contas, categorias, ocupado, erro, salvar, fechar 
             )}
             <Escolha label="Conta" valor={contaId} selecionar={setConta}
                 opcoes={contas.map(conta => ({ valor: conta.id, label: conta.nome }))} />
-            <Escolha label="Categoria" valor={categoriaId} selecionar={setCategoria}
-                opcoes={categorias.map(categoria => ({ valor: categoria.id, label: categoria.nome }))} />
             <Campo label="Descrição (opcional)" value={descricao} onChangeText={setDescricao} multiline maxLength={5000} />
         </Janela>
     );
 }
 
-export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abrirTransacao }: {
+export function AgendamentosScreen({ inicial, abrirContas, abrirTransacao }: {
     inicial?: number;
     abrirContas: () => void;
-    abrirCategorias: () => void;
     abrirTransacao: (transacao: TransacaoResumo) => void;
 }) {
     const { token, sair } = useAuth();
     const { width } = useWindowDimensions();
     const [lista, setLista] = useState<Agendamento[]>([]);
     const [contas, setContas] = useState<Conta[]>([]);
-    const [categorias, setCategorias] = useState<Categoria[]>([]);
     const [filtro, setFiltro] = useState<Filtro>("todos");
     const [carregando, setCarregando] = useState(true);
     const [erroLista, setErroLista] = useState("");
@@ -176,12 +170,11 @@ export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abri
         setCarregando(true);
         setErroLista("");
         try {
-            const [agendas, contasAtuais, categoriasAtuais] = await Promise.all([
-                listarAgendamentosRequest(token), listarContasRequest(token), listarCategoriasRequest(token)
+            const [agendas, contasAtuais] = await Promise.all([
+                listarAgendamentosRequest(token), listarContasRequest(token)
             ]);
             setLista(agendas);
             setContas(contasAtuais);
-            setCategorias(categoriasAtuais);
         } catch (falha) {
             tratarErro(falha, setErroLista);
         } finally {
@@ -254,7 +247,7 @@ export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abri
         }
     }
 
-    const habilitado = contas.length > 0 && categorias.length > 0;
+    const habilitado = contas.length > 0;
     const visiveis = lista.filter(agenda => filtro === "todos" || agenda.status === filtro);
     const ativos = lista.filter(agenda => agenda.status === "ativo").length;
     const proximo = lista.map(agenda => agenda.proximoVencimento)
@@ -289,10 +282,9 @@ export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abri
                     <>
                         {!habilitado && (
                             <View style={[ui.card, styles.guide]}>
-                                <Text style={ui.rowTitle}>Para agendar, cadastre uma conta e uma categoria.</Text>
+                                <Text style={ui.rowTitle}>Para agendar, cadastre uma conta.</Text>
                                 <View style={ui.wrap}>
-                                    {!contas.length && <Botao variant="secondary" label="Ir para Contas" onPress={abrirContas} />}
-                                    {!categorias.length && <Botao variant="secondary" label="Ir para Categorias" onPress={abrirCategorias} />}
+                                    <Botao variant="secondary" label="Ir para Contas" onPress={abrirContas} />
                                 </View>
                             </View>
                         )}
@@ -333,7 +325,7 @@ export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abri
             </ScrollView>
 
             {formulario ? (
-                <Formulario agenda={formulario.agenda} contas={contas} categorias={categorias} ocupado={ocupado}
+                <Formulario agenda={formulario.agenda} contas={contas} ocupado={ocupado}
                     erro={erro} salvar={dados => void salvar(dados)} fechar={fechar} />
             ) : confirmacao ? (
                 <Janela titulo={confirmacao === "excluir" ? "Excluir agendamento?" : "Cancelar agendamento?"} fechar={fechar}>
@@ -357,7 +349,7 @@ export function AgendamentosScreen({ inicial, abrirContas, abrirCategorias, abri
                             <View style={[ui.row, styles.detailTop]}>
                                 <View style={ui.grow}>
                                     <Text style={ui.rowTitle}>{resumoTipo(detalhe)}</Text>
-                                    <Text style={ui.muted}>{detalhe.contaNome} · {detalhe.categoriaNome}</Text>
+                                    <Text style={ui.muted}>{detalhe.contaNome}</Text>
                                     <Text style={ui.muted}>{estados[detalhe.status].label} · {detalhe.pagas} confirmadas</Text>
                                 </View>
                                 <ValorAgenda agenda={detalhe} />

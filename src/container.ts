@@ -21,7 +21,7 @@ export const authService = new AuthService(usuarioRepository);
 export const contaService = new ContaService(contaRepository, usuarioRepository, transacaoRepository, agendamentoRepository);
 export const categoriaService = new CategoriaService(categoriaRepository);
 export const agendamentoService = new AgendamentoService(
-    agendamentoRepository, transacaoRepository, contaRepository, categoriaRepository
+    agendamentoRepository, transacaoRepository, contaRepository
 );
 export const transacaoService = new TransacaoService(
     transacaoRepository, contaRepository, categoriaRepository, agendamentoService

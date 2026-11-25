@@ -1,6 +1,6 @@
 # Personal Finance
 
-Organizador de finanças pessoais com painel em Expo e API em TypeScript. O painel reúne contas, categorias, transações e agendamentos.
+Organizador de finanças pessoais com painel em Expo e API em TypeScript. O painel reúne contas, transações e agendamentos (parcelamentos e assinaturas).
 
 Para trabalhar no código (organização, convenções e como criar um módulo novo), veja o [Guia do projeto](GUIA.md).
 
@@ -85,11 +85,17 @@ Transações e agendamentos bloqueiam a exclusão da conta vinculada e do seu us
 |---|---|---|---|
 | GET | `/categorias` | Lista as categorias | Sim |
 | GET | `/categorias/:id` | Busca uma categoria | Sim |
-| POST | `/categorias` | Cria uma categoria com `{ "nome": "Educação" }` | Sim |
-| PUT | `/categorias/:id` | Renomeia uma categoria | Sim |
-| DELETE | `/categorias/:id` | Exclui uma categoria sem vínculos | Sim |
 
-Categorias agrupam receitas e despesas por assunto. Um banco novo começa com Alimentação, Moradia, Transporte, Saúde, Lazer e Salário. Bancos existentes mantêm suas categorias e vínculos. O tipo e a frequência ficam no agendamento.
+As categorias são fixas e definem quantas vezes uma transação pode ser paga:
+
+| id | Categoria | Pagamento |
+|---|---|---|
+| 1 | Única | uma vez. Para repetir, crie outra transação. |
+| 2 | Recorrente | quantas vezes precisar |
+
+Parcelamentos e assinaturas não são categorias: ficam em Agendamentos.
+
+Bancos criados antes das categorias fixas não são convertidos. A API avisa ao iniciar, e basta apagar o arquivo do banco para ela criar um novo.
 
 ## Transações
 
@@ -100,10 +106,10 @@ Para transações avulsas:
 | Status | Significado | Pode |
 |---|---|---|
 | `a` | ativa (ao criar) | pagar, editar, cancelar |
-| `p` | paga | pagar de novo, editar, cancelar |
+| `p` | paga | pagar de novo (só Recorrente), editar, cancelar |
 | `c` | cancelada | excluir |
 
-- **Pagar** lança o valor no saldo da conta. Cada pagamento lança o valor de novo, e o saldo pode ficar negativo.
+- **Pagar** lança o valor no saldo da conta, e o saldo pode ficar negativo. A Única aceita um pagamento; a Recorrente lança o valor de novo a cada pagamento.
 - **Editar** não mexe no saldo.
 - **Cancelar** não devolve o que já foi pago.
 
@@ -126,14 +132,14 @@ Filtros da listagem, todos opcionais:
 
 Exemplo: `/transacoes?inicio=2026-11-01&fim=2026-11-30&ordenarPor=valor`
 
-As transações geradas por um agendamento incluem `agendamentoId` e `numeroOcorrencia`. Nesse caso, `dataInicio` é a data de vencimento. Cada ocorrência aceita uma confirmação de pagamento ou recebimento. Edite, cancele ou exclua a série pela rota de agendamentos.
+As transações geradas por um agendamento incluem `agendamentoId`, `numeroOcorrencia` e, nos parcelamentos, `totalParcelas`. Nesse caso, `dataInicio` é a data de vencimento. Cada parcela segue a regra da Única: aceita uma confirmação de pagamento ou recebimento. Edite, cancele ou exclua a série pela rota de agendamentos.
 
 ## Agendamentos
 
-Cada agendamento tem conta, categoria, título, valor, operação (`+` ou `-`) e primeiro vencimento. A criação gera transações pendentes, e a confirmação de cada uma movimenta o saldo da conta.
+Cada agendamento tem conta, título, valor, operação (`+` ou `-`) e primeiro vencimento, sem categoria. A criação gera as parcelas como transações pendentes, que são pagas na tela de transações. Cada confirmação movimenta o saldo da conta.
 
-- **Parcelado** gera de 2 a 120 parcelas mensais. Informe o valor total. Quando há diferença de centavos, as primeiras parcelas recebem o centavo adicional até que a soma feche.
-- **Recorrente** repete o valor informado semanal, mensal ou anualmente. O fim é opcional e inclusivo. Ao consultar agendamentos ou a lista de transações, a API gera os vencimentos em atraso e até 45 dias à frente, com pelo menos um vencimento futuro enquanto a série tiver novas datas.
+- **Parcelado** gera de 2 a 120 parcelas mensais, todas na criação. Informe o valor total. Quando há diferença de centavos, as primeiras parcelas recebem o centavo adicional até que a soma feche. Depois de pagas todas as parcelas, a série está concluída.
+- **Recorrente** é uma assinatura (streaming, plano, mensalidade): repete o valor informado semanal, mensal ou anualmente. O fim é opcional e inclusivo. Ao consultar agendamentos ou a lista de transações, a API gera os vencimentos em atraso e até 45 dias à frente, com pelo menos um vencimento futuro enquanto a série tiver novas datas.
 - Para meses com menos dias, o vencimento cai no último dia do mês. O dia original volta nos meses em que existe.
 - A edição está disponível enquanto a série estiver ativa e sem confirmações. O cancelamento encerra a geração e cancela as pendências, preservando os pagamentos e recebimentos já confirmados. Séries canceladas sem confirmações podem ser excluídas.
 
@@ -151,7 +157,6 @@ Exemplo de parcelamento:
 ```json
 {
   "contaId": 1,
-  "categoriaId": 2,
   "titulo": "Mesa",
   "operacao": "-",
   "valor": 300,

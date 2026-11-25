@@ -5,7 +5,8 @@ const data = z.iso.date({ error: "Informe uma data válida no formato AAAA-MM-DD
     .refine(valor => valor >= "1900-01-01" && valor <= "9989-12-31", {
         error: "A data deve estar entre os anos 1900 e 9989"
     });
-const base = transacaoInputSchema.extend({ primeiroVencimento: data });
+// Agendamento não tem categoria: cada parcela segue a regra da Única.
+const base = transacaoInputSchema.omit({ categoriaId: true }).extend({ primeiroVencimento: data });
 
 export const agendamentoInputSchema = z.discriminatedUnion("tipo", [
     base.extend({
