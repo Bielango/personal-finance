@@ -38,22 +38,40 @@ export class ApiError extends Error {
     }
 }
 
+// Sem resposta nesse tempo, a chamada falha com um aviso em vez de carregar para sempre.
+const TEMPO_LIMITE_MS = 15_000;
+
 export async function apiRequest<T>(
     path: string,
     options: RequestInit = {},
     token?: string | null
 ): Promise<T> {
-    const response = await fetch(`${API_URL}${path}`, {
-        ...options,
-        headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...options.headers
-        }
-    });
+    const controle = new AbortController();
+    const limite = setTimeout(() => controle.abort(), TEMPO_LIMITE_MS);
+    let response: Response;
+    let text: string;
+    try {
+        response = await fetch(`${API_URL}${path}`, {
+            ...options,
+            signal: controle.signal,
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...options.headers
+            }
+        });
+        text = await response.text();
+    } catch {
+        // Endereço errado, API desligada, outra rede ou firewall: mostra para onde o app tentou ir.
+        throw new ApiError(
+            `Sem resposta da API em ${API_URL}. Confira se ela está rodando e se o aparelho está na mesma rede.`,
+            0
+        );
+    } finally {
+        clearTimeout(limite);
+    }
 
-    const text = await response.text();
     const body = text ? JSON.parse(text) as ApiErrorBody | T : undefined;
 
     if (!response.ok) {
