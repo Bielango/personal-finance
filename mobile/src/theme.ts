@@ -28,3 +28,14 @@ export const fonts = {
     display: "BarlowCondensed_600SemiBold",
     numbers: "IBMPlexMono_500Medium"
 };
+
+export const layout = {
+    pageWidth: 1320,
+    widePage: 900,
+    gutter: 20,
+    gutterWide: 36,
+    sectionGap: 24,
+    controlSize: 44,
+    controlRadius: 5,
+    dialogRadius: 8
+};

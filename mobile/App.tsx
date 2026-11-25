@@ -6,7 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, SafeAreaView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Marca } from "./src/components/Marca";
-import { Botao, IconName, Janela, ui } from "./src/components/ui";
+import { Carregando, Confirmacao, IconName } from "./src/components/ui";
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 import { AgendamentosScreen } from "./src/screens/AgendamentosScreen";
 import { ContasScreen } from "./src/screens/ContasScreen";
@@ -14,7 +14,7 @@ import { LoginScreen } from "./src/screens/LoginScreen";
 import { TransacoesScreen } from "./src/screens/TransacoesScreen";
 import { UsuariosScreen } from "./src/screens/UsuariosScreen";
 import { VisaoGeralScreen } from "./src/screens/VisaoGeralScreen";
-import { colors, fonts } from "./src/theme";
+import { colors, fonts, layout } from "./src/theme";
 import { TransacaoResumo } from "./src/types";
 
 type Tela =
@@ -36,7 +36,6 @@ function ConteudoAutenticado() {
     const desktop = width >= 1000;
     const [tela, navegar] = useState<Tela>({ aba: "visao" });
     const [confirmarSaida, setConfirmarSaida] = useState(false);
-    const listaTradicional = tela.aba === "contas" || tela.aba === "transacoes" || tela.aba === "usuarios";
     const primeiraLetra = usuario?.nome.trim().charAt(0).toUpperCase() || "?";
     const abrirContas = () => navegar({ aba: "contas" });
     const abrirAgendamentos = () => navegar({ aba: "agendamentos" });
@@ -103,7 +102,7 @@ function ConteudoAutenticado() {
                 </View>
             </View>
             <View style={styles.main}>
-                <View style={[styles.workspace, desktop && listaTradicional && styles.workspaceInset]}>
+                <View style={[styles.workspace, width >= layout.widePage && styles.workspaceWide]}>
                     {tela.aba === "visao" && <VisaoGeralScreen abrirContas={abrirContas} abrirAgendamentos={abrirAgendamentos} abrirTransacao={abrirTransacao} />}
                     {tela.aba === "contas" && <ContasScreen />}
                     {tela.aba === "transacoes" && <TransacoesScreen key={tela.inicial?.id ?? "lista"} inicial={tela.inicial}
@@ -116,12 +115,8 @@ function ConteudoAutenticado() {
                 {!desktop && <View accessibilityRole="tablist" style={styles.tabs}>{renderAbas()}</View>}
             </View>
             {confirmarSaida && (
-                <Janela titulo="Encerrar sessão?" fechar={() => setConfirmarSaida(false)}>
-                    <View style={ui.wrap}>
-                        <Botao label="Voltar" variant="secondary" onPress={() => setConfirmarSaida(false)} />
-                        <Botao label="Sair" icon="log-out-outline" onPress={() => void sair()} />
-                    </View>
-                </Janela>
+                <Confirmacao titulo="Encerrar sessão?" fechar={() => setConfirmarSaida(false)}
+                    label="Sair" variant="primary" confirmar={() => void sair()} />
             )}
         </SafeAreaView>
     );
@@ -129,7 +124,7 @@ function ConteudoAutenticado() {
 
 function Root() {
     const { token, carregando } = useAuth();
-    if (carregando) return <View style={styles.loading}><ActivityIndicator size="large" color={colors.primary} /></View>;
+    if (carregando) return <View style={styles.loading}><Carregando /></View>;
     return token ? <ConteudoAutenticado /> : <LoginScreen />;
 }
 
@@ -182,17 +177,17 @@ const styles = StyleSheet.create({
     main: { flex: 1, minWidth: 0, backgroundColor: colors.background },
     topbar: {
         minHeight: 60, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12,
-        alignSelf: "center", width: "100%", maxWidth: 1320, paddingHorizontal: 16
+        alignSelf: "center", width: "100%", maxWidth: layout.pageWidth, paddingHorizontal: 16
     },
-    topbarWide: { minHeight: 68, paddingHorizontal: 36 },
+    topbarWide: { minHeight: 68, paddingHorizontal: layout.gutterWide },
     userBar: { flexDirection: "row", alignItems: "center", gap: 4 },
     userName: { flexDirection: "row", gap: 8, alignItems: "center" },
     sessionName: { color: colors.mutedOnDark, fontSize: 13, fontWeight: "600", maxWidth: 112 },
     avatar: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
     avatarLetter: { fontSize: 14, color: colors.onDark, fontWeight: "700", paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: colors.dividerOnDark },
     logout: { width: 44, height: 44, justifyContent: "center", alignItems: "center" },
-    workspace: { flex: 1, width: "100%", maxWidth: 1320, alignSelf: "center" },
-    workspaceInset: { paddingHorizontal: 14, paddingTop: 14 },
+    workspace: { flex: 1, width: "100%", maxWidth: layout.pageWidth, alignSelf: "center", paddingHorizontal: layout.gutter },
+    workspaceWide: { paddingHorizontal: layout.gutterWide },
     tabs: { flexDirection: "row", borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
     tab: {
         flex: 1, minWidth: 0, minHeight: 54, borderTopWidth: 2, borderColor: "transparent",
