@@ -1,21 +1,10 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-    useWindowDimensions
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { Marca } from "../components/Marca";
+import { Botao, Campo, CampoSenha, Erro, ui } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../services/api";
-import { colors, fonts } from "../theme";
+import { colors, layout } from "../theme";
 
 export function LoginScreen() {
     const { entrar, cadastrar } = useAuth();
@@ -25,11 +14,11 @@ export function LoginScreen() {
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
-    const [mostrarSenha, setMostrarSenha] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const [erro, setErro] = useState("");
 
     async function enviar() {
+        if (enviando) return;
         if ((modoCadastro && !nome.trim()) || !email.trim() || !senha) {
             setErro("Preencha todos os campos.");
             return;
@@ -37,156 +26,52 @@ export function LoginScreen() {
 
         setEnviando(true);
         setErro("");
-
         try {
-            if (modoCadastro) {
-                await cadastrar(nome.trim(), email.trim(), senha);
-            } else {
-                await entrar(email.trim(), senha);
-            }
-        } catch (error) {
-            setErro(
-                error instanceof ApiError
-                    ? error.message
-                    : "Não foi possível conectar à API. Verifique se o servidor está em execução."
-            );
+            if (modoCadastro) await cadastrar(nome.trim(), email.trim(), senha);
+            else await entrar(email.trim(), senha);
+        } catch (falha) {
+            setErro(falha instanceof ApiError ? falha.message : "Não foi possível conectar à API. Verifique se o servidor está em execução.");
         } finally {
             setEnviando(false);
         }
     }
 
     function alternarModo() {
-        setModoCadastro(value => !value);
+        setModoCadastro(!modoCadastro);
         setErro("");
     }
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-            style={styles.screen}
-        >
-            <ScrollView
-                contentContainerStyle={styles.content}
-                keyboardShouldPersistTaps="handled"
-            >
-                <View style={[styles.shell, desktop && styles.shellWide]}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.screen}>
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+                <View style={[ui.card, styles.shell, desktop && styles.shellWide]}>
                     <View style={[styles.brand, desktop && styles.brandWide]}>
                         <Marca ampla={desktop} />
                         {desktop && (
                             <Text style={styles.brandDescription}>Acompanhe suas contas, seus lançamentos e o que está por vencer.</Text>
                         )}
                     </View>
-
                     <View style={styles.form}>
-                        <View style={styles.formHeading}>
-                            <Text accessibilityRole="header" style={styles.formTitle}>
+                        <View>
+                            <Text accessibilityRole="header" style={[ui.sectionTitle, styles.formTitle]}>
                                 {modoCadastro ? "Criar acesso" : "Entrar"}
                             </Text>
-                            <Text style={styles.subtitle}>
-                                {modoCadastro ? "Cadastre o primeiro usuário do sistema." : "Use seu e-mail e senha para acessar o painel."}
-                            </Text>
+                            {modoCadastro && <Text style={ui.muted}>Cadastre o primeiro usuário do sistema.</Text>}
                         </View>
                         {modoCadastro && (
-                            <View style={styles.group}>
-                                <Text style={styles.label}>Nome</Text>
-                                <TextInput
-                                    accessibilityLabel="Nome"
-                                    value={nome}
-                                    onChangeText={setNome}
-                                    placeholder="Seu nome"
-                                    placeholderTextColor={colors.muted}
-                                    autoCapitalize="words"
-                                    autoComplete="name"
-                                    style={styles.input}
-                                />
-                            </View>
+                            <Campo label="Nome" value={nome} onChangeText={setNome} placeholder="Seu nome"
+                                autoCapitalize="words" autoComplete="name" maxLength={100} />
                         )}
-
-                        <View style={styles.group}>
-                            <Text style={styles.label}>Email</Text>
-                            <TextInput
-                                accessibilityLabel="E-mail"
-                                value={email}
-                                onChangeText={setEmail}
-                                placeholder="voce@email.com"
-                                placeholderTextColor={colors.muted}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                autoComplete="email"
-                                style={styles.input}
-                            />
-                        </View>
-
-                        <View style={styles.group}>
-                            <Text style={styles.label}>Senha</Text>
-                            <View style={styles.passwordField}>
-                                <TextInput
-                                    accessibilityLabel="Senha"
-                                    value={senha}
-                                    onChangeText={setSenha}
-                                    placeholder={modoCadastro ? "Mínimo de 6 caracteres" : "Sua senha"}
-                                    placeholderTextColor={colors.muted}
-                                    secureTextEntry={!mostrarSenha}
-                                    autoCapitalize="none"
-                                    autoComplete={modoCadastro ? "new-password" : "current-password"}
-                                    style={styles.passwordInput}
-                                    onSubmitEditing={() => void enviar()}
-                                />
-                                <Pressable
-                                    accessibilityRole="button"
-                                    accessibilityLabel={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-                                    hitSlop={8}
-                                    onPress={() => setMostrarSenha(value => !value)}
-                                    style={({ pressed }) => [styles.eyeButton, pressed && styles.pressed]}
-                                >
-                                    <Ionicons
-                                        name={mostrarSenha ? "eye-off-outline" : "eye-outline"}
-                                        size={22}
-                                        color={colors.muted}
-                                    />
-                                </Pressable>
-                            </View>
-                        </View>
-
-                        {!!erro && (
-                            <View style={styles.errorBox}>
-                                <Ionicons name="alert-circle-outline" size={19} color={colors.danger} />
-                                <Text style={styles.errorText}>{erro}</Text>
-                            </View>
-                        )}
-
-                        <Pressable
-                            accessibilityRole="button"
-                            disabled={enviando}
-                            onPress={() => void enviar()}
-                            style={({ pressed }) => [
-                                styles.submit,
-                                pressed && styles.pressed,
-                                enviando && styles.disabled
-                            ]}
-                        >
-                            {enviando ? (
-                                <ActivityIndicator color={colors.onDark} />
-                            ) : (
-                                <>
-                                    <Ionicons
-                                        name={modoCadastro ? "person-add-outline" : "log-in-outline"}
-                                        size={21}
-                                        color={colors.onDark}
-                                    />
-                                    <Text style={styles.submitText}>
-                                        {modoCadastro ? "Criar e entrar" : "Entrar"}
-                                    </Text>
-                                </>
-                            )}
-                        </Pressable>
-
-                        <Pressable accessibilityRole="button" onPress={alternarModo} style={styles.switchButton}>
-                            <Text style={styles.switchText}>
-                                {modoCadastro ? "Já tenho uma conta" : "Criar primeiro acesso"}
-                            </Text>
-                        </Pressable>
+                        <Campo label="E-mail" value={email} onChangeText={setEmail} placeholder="voce@email.com"
+                            keyboardType="email-address" autoCapitalize="none" autoCorrect={false} autoComplete="email" maxLength={100} />
+                        <CampoSenha label="Senha" value={senha} onChangeText={setSenha}
+                            placeholder={modoCadastro ? "Mínimo de 6 caracteres" : "Sua senha"}
+                            autoComplete={modoCadastro ? "new-password" : "current-password"} onSubmitEditing={() => void enviar()} />
+                        <Erro mensagem={erro} />
+                        <Botao label={modoCadastro ? "Criar e entrar" : "Entrar"} icon="log-in-outline"
+                            busy={enviando} onPress={() => void enviar()} />
+                        <Botao label={modoCadastro ? "Já tenho uma conta" : "Criar primeiro acesso"}
+                            variant="text" disabled={enviando} onPress={alternarModo} />
                     </View>
                 </View>
             </ScrollView>
@@ -195,129 +80,13 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-    screen: {
-        flex: 1,
-        backgroundColor: colors.background
-    },
-    content: {
-        flexGrow: 1,
-        justifyContent: "center",
-        paddingHorizontal: 24,
-        paddingVertical: 36,
-        alignItems: "center"
-    },
-    shell: {
-        width: "100%",
-        maxWidth: 500,
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: 8,
-        backgroundColor: colors.surface,
-        overflow: "hidden"
-    },
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { flexGrow: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: layout.gutter, paddingVertical: 36 },
+    shell: { width: "100%", maxWidth: 500, borderRadius: layout.dialogRadius, overflow: "hidden" },
     shellWide: { maxWidth: 880, flexDirection: "row", alignItems: "stretch" },
-    brand: {
-        alignItems: "flex-start",
-        backgroundColor: colors.primary,
-        padding: 24,
-        gap: 12
-    },
+    brand: { alignItems: "flex-start", backgroundColor: colors.primary, padding: 24, gap: 12 },
     brandWide: { flex: 1, padding: 36, justifyContent: "center" },
     brandDescription: { color: colors.mutedOnDark, fontSize: 16, lineHeight: 24, maxWidth: 280 },
-    subtitle: {
-        color: colors.muted,
-        fontSize: 14,
-        marginTop: 5
-    },
-    formHeading: { marginBottom: 4 },
-    formTitle: { color: colors.primaryDark, fontFamily: fonts.display, fontSize: 43, lineHeight: 46 },
-    form: {
-        width: "100%",
-        maxWidth: 440,
-        padding: 24,
-        gap: 16
-    },
-    group: {
-        gap: 6
-    },
-    label: {
-        color: colors.text,
-        fontSize: 14,
-        fontWeight: "700"
-    },
-    input: {
-        height: 50,
-        borderWidth: 1,
-        borderColor: colors.control,
-        borderRadius: 6,
-        backgroundColor: colors.surface,
-        paddingHorizontal: 13,
-        color: colors.text,
-        fontSize: 16
-    },
-    passwordField: {
-        height: 50,
-        borderWidth: 1,
-        borderColor: colors.control,
-        borderRadius: 6,
-        backgroundColor: colors.surface,
-        flexDirection: "row",
-        alignItems: "center"
-    },
-    passwordInput: {
-        flex: 1,
-        height: "100%",
-        paddingLeft: 13,
-        color: colors.text,
-        fontSize: 16
-    },
-    eyeButton: {
-        width: 48,
-        height: 48,
-        alignItems: "center",
-        justifyContent: "center"
-    },
-    errorBox: {
-        padding: 11,
-        borderRadius: 6,
-        backgroundColor: colors.dangerSoft,
-        flexDirection: "row",
-        alignItems: "flex-start",
-        gap: 8
-    },
-    errorText: {
-        flex: 1,
-        color: colors.danger,
-        fontSize: 14
-    },
-    submit: {
-        height: 50,
-        borderRadius: 6,
-        backgroundColor: colors.primary,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8
-    },
-    submitText: {
-        color: colors.onDark,
-        fontSize: 16,
-        fontWeight: "800"
-    },
-    switchButton: {
-        minHeight: 42,
-        alignItems: "center",
-        justifyContent: "center"
-    },
-    switchText: {
-        color: colors.primary,
-        fontSize: 14,
-        fontWeight: "700"
-    },
-    pressed: {
-        opacity: 0.68
-    },
-    disabled: {
-        opacity: 0.55
-    }
+    form: { width: "100%", maxWidth: 440, padding: 24, gap: 16 },
+    formTitle: { fontSize: 43, lineHeight: 46 }
 });
