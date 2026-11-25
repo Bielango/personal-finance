@@ -6,7 +6,8 @@ import { TransacaoRepository } from "../repositories/transacao-repository";
 import { TransacaoFiltro, TransacaoInput } from "../schemas/transacao-schema";
 import { AgendamentoService } from "./agendamento-service";
 
-// Ciclo: criar -> ativa (a) -> paga (p), que pode ser paga de novo.
+// Ciclo: criar -> ativa (a) -> paga (p). Só a categoria Recorrente pode ser paga de novo;
+// a Única (e toda parcela de agendamento) é paga uma vez.
 // Ativa ou paga pode ser editada ou cancelada (c). Só cancelada pode ser excluída.
 export class TransacaoService {
     constructor(
@@ -53,7 +54,9 @@ export class TransacaoService {
         if (!transacao) {
             const estado = this.buscarPorId(id);
             this.garantirNaoCancelada(estado, "paga");
-            throw new AppError("Este vencimento já foi baixado", 409);
+            throw new AppError(estado.agendamentoId !== null
+                ? "Esta parcela já foi paga"
+                : "Transação única já paga. Para repetir, crie outra transação", 409);
         }
         return transacao;
     }

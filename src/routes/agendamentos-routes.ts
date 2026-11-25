@@ -45,7 +45,7 @@ const validarDados = validar(agendamentoInputSchema, "body");
  *       400:
  *         description: Dados inválidos
  *       404:
- *         description: Conta ou categoria inexistente
+ *         description: Conta inexistente
  * /agendamentos/{id}:
  *   parameters:
  *     - in: path
@@ -84,7 +84,7 @@ const validarDados = validar(agendamentoInputSchema, "body");
  *       400:
  *         description: Dados inválidos
  *       404:
- *         description: Agendamento, conta ou categoria inexistente
+ *         description: Agendamento ou conta inexistente
  *       409:
  *         description: O agendamento tem pagamentos ou está cancelado
  *   delete:

@@ -18,7 +18,8 @@ export function mapearResumo(registro: Record<string, unknown>): TransacaoResumo
         categoriaId: Number(registro.categoriaId),
         categoriaNome: String(registro.categoriaNome),
         agendamentoId: registro.agendamentoId === null ? null : Number(registro.agendamentoId),
-        numeroOcorrencia: registro.numeroOcorrencia === null ? null : Number(registro.numeroOcorrencia)
+        numeroOcorrencia: registro.numeroOcorrencia === null ? null : Number(registro.numeroOcorrencia),
+        totalParcelas: registro.totalParcelas === null ? null : Number(registro.totalParcelas)
     };
 }
 
@@ -43,13 +44,15 @@ export const CAMPOS_RESUMO = `
     T.TRA_CAT_ID      AS categoriaId,
     K.CAT_NOME        AS categoriaNome,
     O.OCO_AGE_ID      AS agendamentoId,
-    O.OCO_NUMERO      AS numeroOcorrencia`;
+    O.OCO_NUMERO      AS numeroOcorrencia,
+    A.AGE_PARCELAS    AS totalParcelas`;
 
 export const ORIGEM = `
     FROM TRANSACAO T
-    INNER JOIN CONTA C     ON C.CON_ID = T.TRA_CON_ID
-    INNER JOIN CATEGORIA K ON K.CAT_ID = T.TRA_CAT_ID
-    LEFT JOIN OCORRENCIA O ON O.OCO_TRA_ID = T.TRA_ID`;
+    INNER JOIN CONTA C      ON C.CON_ID = T.TRA_CON_ID
+    INNER JOIN CATEGORIA K  ON K.CAT_ID = T.TRA_CAT_ID
+    LEFT JOIN OCORRENCIA O  ON O.OCO_TRA_ID = T.TRA_ID
+    LEFT JOIN AGENDAMENTO A ON A.AGE_ID = O.OCO_AGE_ID`;
 
 // Só colunas desta lista entram no ORDER BY (nada vindo direto da requisição).
 const COLUNAS_ORDENACAO: Record<TransacaoFiltro["ordenarPor"], string> = {
@@ -153,15 +156,18 @@ export class TransacaoRepositorySqlite implements TransacaoRepository {
     // Lança o valor no saldo da conta e marca como paga, tudo ou nada.
     pagar(id: number): Transacao | null {
         return atomico(() => {
+            // Ativa sempre pode ser paga. Paga só de novo se a categoria permitir (Recorrente).
             const pagamento = db.prepare(`
                 UPDATE TRANSACAO
                 SET TRA_STATUS = 'p',
                     TRA_DATA_FIM = datetime('now', 'localtime')
-                WHERE TRA_ID = ? AND TRA_STATUS <> 'c'
-                  AND (TRA_STATUS = 'a' OR NOT EXISTS (SELECT 1 FROM OCORRENCIA WHERE OCO_TRA_ID = ?))
+                WHERE TRA_ID = ?
+                  AND (TRA_STATUS = 'a' OR (TRA_STATUS = 'p' AND EXISTS (
+                      SELECT 1 FROM CATEGORIA WHERE CAT_ID = TRA_CAT_ID AND CAT_REPETIR = 1
+                  )))
                 RETURNING TRA_CON_ID AS contaId,
                           CASE TRA_OPERACAO WHEN '+' THEN TRA_VALOR ELSE -TRA_VALOR END AS valor
-            `).get(id, id);
+            `).get(id);
             if (!pagamento) return null;
             db.prepare("UPDATE CONTA SET CON_SALDO = CON_SALDO + ? WHERE CON_ID = ?")
                 .run(Number(pagamento.valor), Number(pagamento.contaId));

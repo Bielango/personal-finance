@@ -10,8 +10,6 @@ export interface Agendamento {
     valor: number;
     contaId: number;
     contaNome: string;
-    categoriaId: number;
-    categoriaNome: string;
     tipo: "parcelado" | "recorrente";
     primeiroVencimento: string;
     periodicidade: Periodicidade | null;

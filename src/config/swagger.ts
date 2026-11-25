@@ -24,18 +24,12 @@ const swaggerOptions: swaggerJsdoc.Options = {
             { name: "Autenticação", description: "Login e identificação do usuário autenticado" },
             { name: "Usuarios", description: "Cadastro e manutencao dos usuarios" },
             { name: "Contas", description: "Contas financeiras do usuário autenticado" },
-            { name: "Categorias", description: "Categorias das transações" },
+            { name: "Categorias", description: "Tipos fixos de transação: Única (paga uma vez) e Recorrente (pode ser paga várias vezes)" },
             { name: "Transações", description: "Recebimentos (+) e gastos (-) das contas" },
             { name: "Agendamentos", description: "Parcelamentos e lançamentos recorrentes" }
         ],
 
         components: {
-            requestBodies: {
-                CategoriaInput: {
-                    required: true,
-                    content: { "application/json": { schema: { $ref: "#/components/schemas/CategoriaInput" } } }
-                }
-            },
             securitySchemes: {
                 bearerAuth: {
                     type: "http",
@@ -125,13 +119,13 @@ const swaggerOptions: swaggerJsdoc.Options = {
                     type: "object",
                     properties: {
                         id: { type: "integer", example: 1 },
-                        nome: { type: "string", example: "Alimentação" }
+                        nome: { type: "string", example: "Única" },
+                        permiteRepetir: {
+                            type: "boolean",
+                            description: "true = pode ser paga mais de uma vez (Recorrente)",
+                            example: false
+                        }
                     }
-                },
-                CategoriaInput: {
-                    type: "object",
-                    required: ["nome"],
-                    properties: { nome: { type: "string", minLength: 2, maxLength: 100, example: "Moradia" } }
                 },
                 TransacaoResumo: {
                     type: "object",
@@ -146,9 +140,14 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         contaId: { type: "integer", example: 1 },
                         contaNome: { type: "string", example: "Conta principal" },
                         categoriaId: { type: "integer", example: 1 },
-                        categoriaNome: { type: "string", example: "Alimentação" },
+                        categoriaNome: { type: "string", example: "Única" },
                         agendamentoId: { type: "integer", nullable: true },
-                        numeroOcorrencia: { type: "integer", nullable: true }
+                        numeroOcorrencia: { type: "integer", nullable: true },
+                        totalParcelas: {
+                            type: "integer",
+                            nullable: true,
+                            description: "Total de parcelas do agendamento parcelado"
+                        }
                     }
                 },
                 Transacao: {
@@ -167,7 +166,7 @@ const swaggerOptions: swaggerJsdoc.Options = {
                     required: ["contaId", "categoriaId", "titulo", "operacao", "valor"],
                     properties: {
                         contaId: { type: "integer", example: 1 },
-                        categoriaId: { type: "integer", example: 1 },
+                        categoriaId: { type: "integer", description: "1 = Única, 2 = Recorrente", example: 1 },
                         titulo: { type: "string", example: "Mercado" },
                         descricao: { type: "string", example: "Compra do mês" },
                         operacao: { type: "string", enum: ["+", "-"], example: "-" },
@@ -176,11 +175,19 @@ const swaggerOptions: swaggerJsdoc.Options = {
                 },
                 AgendamentoInput: {
                     allOf: [
-                        { $ref: "#/components/schemas/TransacaoInput" },
                         {
                             type: "object",
-                            required: ["primeiroVencimento"],
-                            properties: { primeiroVencimento: { type: "string", format: "date", example: "2026-12-31" } },
+                            required: ["contaId", "titulo", "operacao", "valor", "primeiroVencimento"],
+                            properties: {
+                                contaId: { type: "integer", example: 1 },
+                                titulo: { type: "string", example: "Mesa" },
+                                descricao: { type: "string" },
+                                operacao: { type: "string", enum: ["+", "-"], example: "-" },
+                                valor: { type: "number", format: "double", example: 300 },
+                                primeiroVencimento: { type: "string", format: "date", example: "2026-12-31" }
+                            }
+                        },
+                        {
                             oneOf: [
                                 {
                                     required: ["tipo", "parcelas"],
@@ -200,9 +207,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
                             ]
                         }
                     ],
-                    description: "Em parcelamentos, valor é o total. Em recorrências, é o valor de cada lançamento.",
+                    description: "Em parcelamentos, valor é o total. Em recorrências (assinaturas), é o valor de cada lançamento. Agendamento não tem categoria: cada parcela é paga uma vez.",
                     example: {
-                        contaId: 1, categoriaId: 2, titulo: "Mesa", operacao: "-", valor: 300,
+                        contaId: 1, titulo: "Mesa", operacao: "-", valor: 300,
                         primeiroVencimento: "2026-12-31", tipo: "parcelado", parcelas: 3
                     }
                 },
@@ -212,8 +219,6 @@ const swaggerOptions: swaggerJsdoc.Options = {
                         id: { type: "integer" },
                         contaId: { type: "integer" },
                         contaNome: { type: "string" },
-                        categoriaId: { type: "integer" },
-                        categoriaNome: { type: "string" },
                         titulo: { type: "string" },
                         descricao: { type: "string", nullable: true },
                         operacao: { type: "string", enum: ["+", "-"] },

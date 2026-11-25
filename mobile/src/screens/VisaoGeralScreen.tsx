@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { Botao, Cabecalho, Estado, ui } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
-import { dataLocal, formatarData, formatarMoeda } from "../formatacao";
+import { dataLocal, descreverOrigem, formatarData, formatarMoeda } from "../formatacao";
 import { ApiError, listarContasRequest, listarTransacoesRequest } from "../services/api";
 import { colors, fonts } from "../theme";
 import { Conta, TransacaoResumo } from "../types";
@@ -237,7 +237,7 @@ export function VisaoGeralScreen({ abrirContas, abrirAgendamentos, abrirTransaca
                                         </View>
                                         <View style={ui.grow}>
                                             <Text style={ui.rowTitle}>{transacao.titulo}</Text>
-                                            <Text style={ui.muted}>{transacao.contaNome} · {transacao.categoriaNome}</Text>
+                                            <Text style={ui.muted}>{transacao.contaNome} · {descreverOrigem(transacao)}</Text>
                                         </View>
                                         <Text style={[ui.money, receita && styles.incomeCaption, styles.statementAmount]}>
                                             {receita ? "+" : "−"} {formatarMoeda(transacao.valor)}

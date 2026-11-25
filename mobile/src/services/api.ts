@@ -146,17 +146,6 @@ export function listarCategoriasRequest(token: string) {
     return apiRequest<Categoria[]>("/categorias", {}, token);
 }
 
-export function salvarCategoriaRequest(id: number | undefined, nome: string, token: string) {
-    return apiRequest<Categoria>(id === undefined ? "/categorias" : `/categorias/${id}`, {
-        method: id === undefined ? "POST" : "PUT",
-        body: JSON.stringify({ nome })
-    }, token);
-}
-
-export function excluirCategoriaRequest(id: number, token: string) {
-    return apiRequest<void>(`/categorias/${id}`, { method: "DELETE" }, token);
-}
-
 export interface TransacaoInput {
     contaId: number;
     categoriaId: number;
@@ -213,7 +202,8 @@ export function excluirTransacaoRequest(id: number, token: string) {
     return apiRequest<void>(`/transacoes/${id}`, { method: "DELETE" }, token);
 }
 
-export type AgendamentoInput = TransacaoInput & { primeiroVencimento: string } & (
+// Agendamento não tem categoria: cada parcela é paga uma vez.
+export type AgendamentoInput = Omit<TransacaoInput, "categoriaId"> & { primeiroVencimento: string } & (
     { tipo: "parcelado"; parcelas: number } |
     { tipo: "recorrente"; periodicidade: Periodicidade; ate?: string }
 );

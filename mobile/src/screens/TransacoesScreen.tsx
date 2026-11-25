@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { Botao, Cabecalho, ui } from "../components/ui";
 import { useAuth } from "../context/AuthContext";
-import { converterValor, formatarMoeda } from "../formatacao";
+import { converterValor, descreverOrigem, formatarMoeda } from "../formatacao";
 import {
     ApiError,
     atualizarTransacaoRequest,
@@ -160,11 +160,10 @@ function StatusBadge({ transacao }: { transacao: TransacaoResumo }) {
     );
 }
 
-export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrirCategorias }: {
+export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas }: {
     inicial?: Pick<TransacaoResumo, "id" | "dataInicio">;
     abrirAgendamento: (id: number) => void;
     abrirContas: () => void;
-    abrirCategorias: () => void;
 }) {
     const { token, sair } = useAuth();
 
@@ -470,7 +469,7 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
                         <StatusBadge transacao={item} />
                     </View>
                     <Text numberOfLines={1} style={styles.itemDetails}>
-                        {item.contaNome} · {item.categoriaNome}
+                        {item.contaNome} · {descreverOrigem(item)}
                     </Text>
                     <View style={styles.itemBottomLine}>
                         <Text numberOfLines={1} style={styles.itemDate}>
@@ -491,6 +490,8 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
 
     const infoDetalhe = detalhe ? operacoes[detalhe.operacao] : null;
     const agendamentoId = detalhe?.agendamentoId;
+    // Só a Recorrente pode ser paga de novo; Única e parcelas, uma vez.
+    const podeRepetir = !!categorias.find(categoria => categoria.id === detalhe?.categoriaId)?.permiteRepetir;
 
     return (
         <View style={styles.screen}>
@@ -727,7 +728,7 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
 
                                 <View style={styles.detailList}>
                                     <LinhaDetalhe icon="wallet-outline" label="Conta" valor={detalhe.contaNome} />
-                                    <LinhaDetalhe icon="pricetag-outline" label="Categoria" valor={detalhe.categoriaNome} />
+                                    <LinhaDetalhe icon="pricetag-outline" label={agendamentoId ? "Agendamento" : "Categoria"} valor={descreverOrigem(detalhe)} />
                                     <LinhaDetalhe
                                         icon="calendar-outline"
                                         label={agendamentoId ? "Vencimento" : "Criada em"}
@@ -750,7 +751,7 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
                                     </Text>
                                 </View>
 
-                                {(detalhe.status === "a" || (detalhe.status === "p" && !agendamentoId)) && (
+                                {(detalhe.status === "a" || (detalhe.status === "p" && podeRepetir)) && (
                                         <Pressable
                                             disabled={executando}
                                             onPress={() => confirmarPagamento(detalhe)}
@@ -863,12 +864,11 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
                             contentContainerStyle={styles.form}
                             keyboardShouldPersistTaps="handled"
                         >
-                            {(contas.length === 0 || categorias.length === 0) && (
+                            {contas.length === 0 && (
                                 <View style={ui.section}>
-                                    <Text style={ui.muted}>Você precisa de uma conta e uma categoria para lançar transações.</Text>
+                                    <Text style={ui.muted}>Você precisa de uma conta para lançar transações.</Text>
                                     <View style={ui.wrap}>
-                                        {contas.length === 0 && <Botao label="Ir para Contas" variant="secondary" onPress={abrirContas} />}
-                                        {categorias.length === 0 && <Botao label="Ir para Categorias" variant="secondary" onPress={abrirCategorias} />}
+                                        <Botao label="Ir para Contas" variant="secondary" onPress={abrirContas} />
                                     </View>
                                 </View>
                             )}
@@ -1037,6 +1037,9 @@ export function TransacoesScreen({ inicial, abrirAgendamento, abrirContas, abrir
                                                 >
                                                     <View style={styles.dropdownTextArea}>
                                                         <Text style={styles.dropdownName}>{categoria.nome}</Text>
+                                                        <Text numberOfLines={1} style={styles.dropdownDetail}>
+                                                            {categoria.permiteRepetir ? "Pode ser paga várias vezes" : "Paga uma única vez"}
+                                                        </Text>
                                                     </View>
                                                     {selecionado && (
                                                         <Ionicons name="checkmark" size={21} color={colors.primary} />
